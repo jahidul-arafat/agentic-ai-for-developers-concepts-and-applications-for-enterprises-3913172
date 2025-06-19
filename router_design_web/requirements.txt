@@ -1,0 +1,32 @@
+# Core Flask dependencies
+Flask==3.0.0
+Flask-CORS==4.0.0
+Werkzeug==3.0.1
+
+# LlamaIndex dependencies
+llama-index==0.10.59
+llama-index-llms-openai==0.1.27
+llama-index-embeddings-openai==0.1.11
+llama-index-llms-azure-openai==0.1.10
+llama-index-embeddings-azure-openai==0.1.11
+llama-index-llms-openai-like
+llama-index-embeddings-huggingface
+sentence-transformers
+
+# Document processing
+pypdf==4.3.1
+python-docx==1.1.0
+python-dotenv==1.0.0
+
+# Async support
+nest-asyncio==1.6.0
+
+# Optional: WebSocket support for real-time updates
+flask-socketio==5.3.6
+
+# Optional: Enhanced file type detection
+python-magic==0.4.27
+
+# Development dependencies (optional)
+pytest==7.4.3
+requests==2.32.4
