@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture Demo - Intelligent Agent Router</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow-x: hidden;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f0f23 100%);
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .main-container {
+      height: 100vh;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    /* Architecture Diagram Styles */
+    .architecture-container {
+      position: relative;
+      width: 100%;
+      height: 800px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 25%, #ec4899 50%, #f59e0b 75%, #10b981 100%);
+      border-radius: 20px;
+      margin: 20px 0;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .architecture-node {
+      position: absolute;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 240, 255, 0.9));
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(15px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      min-width: 140px;
+      text-align: center;
+      font-size: 11px;
+      color: #1a1a2e;
+      font-weight: 600;
+    }
+
+    .architecture-node:hover {
+      transform: scale(1.1) translateY(-8px) rotateY(5deg);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      background: linear-gradient(135deg, #ffffff, #f0f8ff);
+      border-color: #3b82f6;
+    }
+
+    .architecture-node.active {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+      animation: activeNode 2s infinite;
+      border-color: #fbbf24;
+      box-shadow: 0 15px 50px rgba(59, 130, 246, 0.5);
+    }
+
+    @keyframes activeNode {
+      0%, 100% { transform: scale(1) translateY(0); }
+      25% { transform: scale(1.05) translateY(-3px); }
+      75% { transform: scale(1.02) translateY(-1px); }
+    }
+
+    .connection-line {
+      position: absolute;
+      background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #ec4899);
+      height: 4px;
+      border-radius: 3px;
+      transform-origin: left center;
+      opacity: 0.9;
+      transition: all 0.4s ease;
+      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+    }
+
+    .connection-line.animated {
+      background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #ec4899, #10b981);
+      background-size: 300% 100%;
+      animation: flowLine 3s linear infinite;
+    }
+
+    @keyframes flowLine {
+      0% { background-position: 300% 0; }
+      100% { background-position: -300% 0; }
+    }
+
+    .edge-label {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.8);
+      color: #ffffff;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    .data-flow {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: radial-gradient(circle, #fbbf24, #f59e0b);
+      border-radius: 50%;
+      animation: dataFlowEnhanced 4s linear infinite;
+      box-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+      z-index: 5;
+    }
+
+    @keyframes dataFlowEnhanced {
+      0% {
+        transform: translateX(0) translateY(0) scale(0.5);
+        opacity: 0;
+        box-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+      }
+      10% {
+        opacity: 1;
+        transform: scale(1.2);
+        box-shadow: 0 0 30px rgba(251, 191, 36, 1);
+      }
+      90% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 25px rgba(251, 191, 36, 0.9);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.5);
+        box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+      }
+    }
+
+    .particle-trail {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(251, 191, 36, 0.6);
+      border-radius: 50%;
+      animation: trailFlow 4s linear infinite;
+    }
+
+    @keyframes trailFlow {
+      0% { opacity: 0; transform: scale(0); }
+      20% { opacity: 0.8; transform: scale(1); }
+      80% { opacity: 0.4; transform: scale(0.8); }
+      100% { opacity: 0; transform: scale(0); }
+    }
+
+    .component-detail {
+      background: linear-gradient(135deg, rgba(15, 15, 35, 0.95), rgba(26, 26, 46, 0.9));
+      border-radius: 16px;
+      padding: 25px;
+      margin: 15px 0;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.4s ease;
+      color: white;
+    }
+
+    .component-detail:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .flow-step {
+      position: relative;
+      padding: 25px;
+      margin: 20px 0;
+      border-left: 6px solid #3b82f6;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+      border-radius: 0 12px 12px 0;
+      transition: all 0.4s ease;
+      color: white;
+    }
+
+    .flow-step:hover {
+      border-left-width: 10px;
+      transform: translateX(8px);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+    }
+
+    .flow-step::before {
+      content: attr(data-step);
+      position: absolute;
+      left: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 25px;
+      margin: 25px 0;
+    }
+
+    .metric-card {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s ease;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 15px 40px rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.8s ease;
+    }
+
+    .metric-card:hover::before {
+      left: 100%;
+    }
+
+    .demo-button {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+      border: none;
+      padding: 15px 25px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    .demo-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+    }
+
+    .demo-button:active {
+      transform: translateY(0);
+    }
+
+    .demo-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .tab-button {
+      padding: 15px 25px;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      margin: 8px;
+      font-size: 14px;
+    }
+
+    .tab-button.active {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      color: white;
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .tab-button:not(.active) {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .tab-button:not(.active):hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .interactive-demo {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 16px;
+      padding: 25px;
+      margin: 25px 0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(15px);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-right: 10px;
+      animation: statusPulse 2s infinite;
+    }
+
+    .status-running { background: #10b981; }
+    .status-ready { background: #3b82f6; }
+    .status-processing { background: #f59e0b; }
+
+    @keyframes statusPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.8; }
+    }
+
+    .tooltip {
+      position: absolute;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(26, 26, 46, 0.9));
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      max-width: 250px;
+      z-index: 1000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .tooltip.visible {
+      opacity: 1;
+    }
+
+    .header-gradient {
+      background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #ec4899 100%);
+    }
+
+    .card-gradient {
+      background: linear-gradient(135deg, rgba(15, 15, 35, 0.8), rgba(26, 26, 46, 0.8));
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Enhanced Animations */
+    @keyframes floatingElements {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      33% { transform: translateY(-10px) rotate(1deg); }
+      66% { transform: translateY(5px) rotate(-1deg); }
+    }
+
+    .floating {
+      animation: floatingElements 6s ease-in-out infinite;
+    }
+
+    @keyframes backgroundShift {
+      0% { background-position: 0% 0%; }
+      50% { background-position: 100% 100%; }
+      100% { background-position: 0% 0%; }
+    }
+
+    .animated-bg {
+      background-size: 400% 400%;
+      animation: backgroundShift 15s ease infinite;
+    }
+
+    /* Additional CSS for flow animations and interactions */
+    .active-flow {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.3)) !important;
+      border-left-color: #fbbf24 !important;
+      transform: translateX(12px) !important;
+    }
+
+    /* Enhanced hover effects for metric cards */
+    .metric-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      transition: all 0.6s ease;
+      transform: translate(-50%, -50%);
+    }
+
+    .metric-card:hover::after {
+      width: 300px;
+      height: 300px;
+    }
+
+    /* Improved connection line animations */
+    .connection-line.animated::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 20px;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+      animation: connectionPulse 2s linear infinite;
+    }
+
+    @keyframes connectionPulse {
+      0% { transform: translateX(-20px); }
+      100% { transform: translateX(200px); }
+    }
+
+    /* Enhanced node interactions */
+    .architecture-node {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .architecture-node::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(from 0deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+      animation: nodeRotate 10s linear infinite;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .architecture-node:hover::before {
+      opacity: 1;
+    }
+
+    @keyframes nodeRotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Improved tooltip styling */
+    .tooltip {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.025em;
+      line-height: 1.4;
+    }
+
+    .tooltip::before {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 5px solid rgba(0, 0, 0, 0.9);
+    }
+
+    /* Enhanced demo button effects */
+    .demo-button {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .demo-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .demo-button:hover::before {
+      left: 100%;
+    }
+
+    /* Flow step enhanced animations */
+    .flow-step {
+      position: relative;
+    }
+
+    .flow-step::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+      transition: width 0.3s ease;
+      border-radius: 0 12px 12px 0;
+    }
+
+    .flow-step:hover::after {
+      width: 100%;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .architecture-container {
+        height: 600px;
+      }
+
+      .architecture-node {
+        min-width: 100px;
+        padding: 8px;
+        font-size: 10px;
+      }
+
+      .edge-label {
+        font-size: 8px;
+        padding: 2px 4px;
+      }
+
+      .flow-step {
+        padding: 15px;
+        margin: 10px 0;
+      }
+
+      .flow-step::before {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+      }
+    }
+
+    /* Print styles */
+    @media print {
+      .interactive-demo,
+      .demo-button,
+      .tooltip {
+        display: none !important;
+      }
+
+      .architecture-container {
+        background: white !important;
+        color: black !important;
+      }
+
+      .architecture-node {
+        background: white !important;
+        color: black !important;
+        border: 2px solid #333 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="tooltip" class="tooltip"></div>
+<div class="main-container">
+  <!-- Header -->
+  <div class="header-gradient text-white shadow-2xl rounded-2xl p-8 mb-8">
+    <h1 class="text-4xl font-bold mb-3">🏗️ Intelligent Agent Router Architecture</h1>
+    <p class="text-blue-100 text-lg">
+      Advanced AI-powered document routing system with hybrid intelligence,
+      vector embeddings, and real-time performance optimization.
+    </p>
+  </div>
+
+  <!-- View Selector -->
+  <div class="card-gradient shadow-2xl rounded-2xl p-8 mb-8">
+    <div class="flex flex-wrap gap-4 mb-6">
+      <button class="tab-button active" onclick="showView('overview')">
+        🏗️ Architecture Overview
+      </button>
+      <button class="tab-button" onclick="showView('dataflow')">
+        🔄 Data Flow
+      </button>
+      <button class="tab-button" onclick="showView('components')">
+        🧩 Components
+      </button>
+      <button class="tab-button" onclick="showView('performance')">
+        ⚡ Performance
+      </button>
+    </div>
+    <p class="text-gray-300 text-lg" id="view-description">
+      Complete system architecture with interactive components and real-time animations
+    </p>
+  </div>
+
+  <!-- Overview View -->
+  <div id="overview-view" class="card-gradient shadow-2xl rounded-2xl p-8">
+    <h3 class="text-2xl font-semibold mb-6 text-white">🎯 System Architecture Overview</h3>
+
+    <!-- Interactive Architecture Diagram -->
+    <div class="architecture-container relative animated-bg">
+      <!-- Background Pattern -->
+      <div class="absolute inset-0 opacity-10">
+        <div class="w-full h-full" style="background-image: radial-gradient(circle at 25px 25px, rgba(255,255,255,0.3) 3px, transparent 3px); background-size: 50px 50px;"></div>
+      </div>
+
+      <!-- Enhanced Architecture Nodes -->
+
+      <!-- Frontend Layer -->
+      <div class="architecture-node floating" style="top: 60px; left: 80px;" onclick="selectComponent('react_ui', event)" data-tooltip="Modern React interface with state management and real-time updates">
+        <div class="text-2xl mb-2">⚛️</div>
+        <div class="font-semibold">React UI</div>
+        <div class="opacity-70 mt-1">Frontend Interface</div>
+      </div>
+
+      <div class="architecture-node floating" style="top: 60px; left: 280px;" onclick="selectComponent('state_manager')" data-tooltip="LocalStorage-based state persistence and session management">
+        <div class="text-2xl mb-2">💾</div>
+        <div class="font-semibold">State Manager</div>
+        <div class="opacity-70 mt-1">Session Persistence</div>
+      </div>
+
+      <!-- API Layer -->
+      <div class="architecture-node floating" style="top: 180px; left: 180px;" onclick="selectComponent('flask_api')" data-tooltip="RESTful Flask API server with comprehensive endpoints">
+        <div class="text-2xl mb-2">🌐</div>
+        <div class="font-semibold">Flask API</div>
+        <div class="opacity-70 mt-1">REST Server</div>
+      </div>
+
+      <div class="architecture-node floating" style="top: 180px; left: 380px;" onclick="selectComponent('file_handler')" data-tooltip="Multi-format file upload and validation system">
+        <div class="text-2xl mb-2">📤</div>
+        <div class="font-semibold">File Handler</div>
+        <div class="opacity-70 mt-1">Upload Manager</div>
+      </div>
+
+      <!-- Processing Layer -->
+      <div class="architecture-node floating" style="top: 300px; left: 80px;" onclick="selectComponent('document_parser')" data-tooltip="Multi-format document parser with JSON analysis">
+        <div class="text-2xl mb-2">📄</div>
+        <div class="font-semibold">Document Parser</div>
+        <div class="opacity-70 mt-1">Content Extraction</div>
+      </div>
+
+      <div class="architecture-node floating" style="top: 300px; left: 280px;" onclick="selectComponent('text_chunker')" data-tooltip="Intelligent text chunking with context preservation">
+        <div class="text-2xl mb-2">✂️</div>
+        <div class="font-semibold">Text Chunker</div>
+        <div class="opacity-70 mt-1">Smart Splitting</div>
+      </div>
+
+      <div class="architecture-node floating" style="top: 300px; left: 480px;" onclick="selectComponent('embedding_engine')" data-tooltip="Vector embedding generation using transformer models">
+        <div class="text-2xl mb-2">🔢</div>
+        <div class="font-semibold">Embedding Engine</div>
+        <div class="opacity-70 mt-1">Vectorization</div>
+      </div>
+
+      <!-- AI Layer -->
+      <div class="architecture-node floating" style="top: 420px; left: 180px;" onclick="selectComponent('vector_indexer')" data-tooltip="Efficient vector indexing and similarity search">
+        <div class="text-2xl mb-2">🗂️</div>
+        <div class="font-semibold">Vector Indexer</div>
+        <div class="opacity-70 mt-1">Index Creation</div>
+      </div>
+
+      <div class="architecture-node floating" style="top: 420px; left: 380px;" onclick="selectComponent('query_engine')" data-tooltip="Query engine factory with document-specific optimization">
+        <div class="text-2xl mb-2">⚙️</div>
+        <div class="font-semibold">Query Engine</div>
+        <div class="opacity-70 mt-1">Search Optimization</div>
+      </div>
+
+      <!-- Intelligence Layer -->
+      <div class="architecture-node floating" style="top: 540px; left: 80px;" onclick="selectComponent('llm_engine')" data-tooltip="Large Language Model for intelligent text processing">
+        <div class="text-2xl mb-2">🧠</div>
+        <div class="font-semibold">LLM Engine</div>
+        <div class="opacity-70 mt-1">AI Processing</div>
+      </div>
+
+      <div class="architecture-node floating" style="top: 540px; left: 280px;" onclick="selectComponent('router_agent')" data-tooltip="Hybrid routing agent with LLM and keyword strategies">
+        <div class="text-2xl mb-2">🚦</div>
+        <div class="font-semibold">Router Agent</div>
+        <div class="opacity-70 mt-1">Intelligent Routing</div>
+      </div>
+
+      <div class="architecture-node floating" style="top: 540px; left: 480px;" onclick="selectComponent('vector_store')" data-tooltip="High-performance vector database with similarity search">
+        <div class="text-2xl mb-2">🗄️</div>
+        <div class="font-semibold">Vector Store</div>
+        <div class="opacity-70 mt-1">Data Repository</div>
+      </div>
+
+      <!-- Enhanced Connection Lines with Labels -->
+      <!-- Frontend Connections -->
+      <div class="connection-line animated" style="left: 220px; top: 77px; width: 60px; transform: rotate(0deg);"></div>
+      <div class="edge-label" style="left: 240px; top: 67px;">State Sync</div>
+
+      <div class="connection-line animated" style="left: 180px; top: 140px; width: 80px; transform: rotate(65deg);"></div>
+      <div class="edge-label" style="left: 200px; top: 145px;">API Calls</div>
+
+      <!-- API Layer Connections -->
+      <div class="connection-line animated" style="left: 320px; top: 197px; width: 60px; transform: rotate(0deg);"></div>
+      <div class="edge-label" style="left: 340px; top: 187px;">File Upload</div>
+
+      <!-- Processing Connections -->
+      <div class="connection-line animated" style="left: 220px; top: 317px; width: 60px; transform: rotate(0deg);"></div>
+      <div class="edge-label" style="left: 240px; top: 307px;">Text Chunks</div>
+
+      <div class="connection-line animated" style="left: 420px; top: 317px; width: 60px; transform: rotate(0deg);"></div>
+      <div class="edge-label" style="left: 440px; top: 307px;">Vectors</div>
+
+      <!-- Indexing Connections -->
+      <div class="connection-line animated" style="left: 320px; top: 437px; width: 60px; transform: rotate(0deg);"></div>
+      <div class="edge-label" style="left: 340px; top: 427px;">Indexes</div>
+
+      <!-- AI Layer Connections -->
+      <div class="connection-line animated" style="left: 220px; top: 557px; width: 60px; transform: rotate(0deg);"></div>
+      <div class="edge-label" style="left: 240px; top: 547px;">Routes</div>
+
+      <div class="connection-line animated" style="left: 420px; top: 557px; width: 60px; transform: rotate(0deg);"></div>
+      <div class="edge-label" style="left: 440px; top: 547px;">Queries</div>
+
+      <!-- Vertical Connections -->
+      <div class="connection-line animated" style="left: 197px; top: 260px; width: 60px; transform: rotate(90deg);"></div>
+      <div class="edge-label" style="left: 170px; top: 275px;">Processing</div>
+
+      <div class="connection-line animated" style="left: 197px; top: 380px; width: 60px; transform: rotate(90deg);"></div>
+      <div class="edge-label" style="left: 170px; top: 395px;">Indexing</div>
+
+      <div class="connection-line animated" style="left: 297px; top: 500px; width: 60px; transform: rotate(90deg);"></div>
+      <div class="edge-label" style="left: 270px; top: 515px;">Intelligence</div>
+
+      <!-- Enhanced Data Flow Particles -->
+      <div class="data-flow" style="left: 220px; top: 75px; animation-delay: 0s;"></div>
+      <div class="particle-trail" style="left: 215px; top: 78px; animation-delay: 0.2s;"></div>
+      <div class="particle-trail" style="left: 210px; top: 78px; animation-delay: 0.4s;"></div>
+
+      <div class="data-flow" style="left: 420px; top: 315px; animation-delay: 1s;"></div>
+      <div class="particle-trail" style="left: 415px; top: 318px; animation-delay: 1.2s;"></div>
+
+      <div class="data-flow" style="left: 297px; top: 555px; animation-delay: 2s;"></div>
+      <div class="particle-trail" style="left: 292px; top: 558px; animation-delay: 2.2s;"></div>
+
+      <div class="data-flow" style="left: 180px; top: 195px; animation-delay: 0.5s;"></div>
+      <div class="data-flow" style="left: 320px; top: 435px; animation-delay: 1.5s;"></div>
+      <div class="data-flow" style="left: 220px; top: 555px; animation-delay: 2.5s;"></div>
+    </div>
+
+    <!-- Enhanced Interactive Demo Controls -->
+    <div class="interactive-demo">
+      <h4 class="text-xl font-semibold mb-4 text-white">🎮 Interactive Demonstrations</h4>
+      <div class="flex flex-wrap gap-4 mb-4">
+        <button class="demo-button" onclick="runDemo('upload')" id="upload-demo">
+          📤 Document Upload Flow
+        </button>
+        <button class="demo-button" onclick="runDemo('processing')" id="processing-demo">
+          ⚡ Document Processing Flow
+        </button>
+        <button class="demo-button" onclick="runDemo('query')" id="query-demo">
+          🔍 Query Processing Flow
+        </button>
+        <button class="demo-button" onclick="runDemo('routing')" id="routing-demo">
+          🚦 Intelligent Routing Flow
+        </button>
+        <button class="demo-button" onclick="toggleAnimations()" id="animation-toggle">
+          ⏸️ Pause Animations
+        </button>
+      </div>
+      <div id="demo-status" class="text-yellow-300 text-lg" style="display: none;">
+        🔄 Running demonstration... Watch the highlighted components!
+      </div>
+      <div class="text-white text-base mt-3">
+        <span class="status-indicator status-ready"></span>System Ready
+        <span class="status-indicator status-processing ml-6"></span>Processing
+        <span class="status-indicator status-running ml-6"></span>Active Flow
+      </div>
+    </div>
+
+    <!-- Component Details -->
+    <div id="component-details" class="component-detail mt-8" style="display: none;">
+      <div id="component-content"></div>
+    </div>
+  </div>
+
+  <!-- Data Flow View -->
+  <div id="dataflow-view" class="card-gradient shadow-2xl rounded-2xl p-8" style="display: none;">
+    <h3 class="text-2xl font-semibold mb-6 text-white">🔄 Data Flow & Process Pipeline</h3>
+
+    <div class="space-y-6">
+      <div class="flow-step" data-step="1">
+        <div class="ml-8">
+          <h4 class="text-xl font-semibold text-white mb-3">Document Upload & Validation</h4>
+          <p class="text-gray-300 mb-3 text-lg">User uploads documents through the React frontend with real-time validation</p>
+          <p class="text-sm text-gray-400 italic">Files are validated for type, size, and security before secure storage with metadata tracking</p>
+        </div>
+      </div>
+
+      <div class="flow-step" data-step="2">
+        <div class="ml-8">
+          <h4 class="text-xl font-semibold text-white mb-3">Document Parsing & Analysis</h4>
+          <p class="text-gray-300 mb-3 text-lg">Multi-format document parser extracts content and analyzes structure</p>
+          <p class="text-sm text-gray-400 italic">Advanced JSON analysis, PDF text extraction, and metadata preservation</p>
+        </div>
+      </div>
+
+      <div class="flow-step" data-step="3">
+        <div class="ml-8">
+          <h4 class="text-xl font-semibold text-white mb-3">Intelligent Text Chunking</h4>
+          <p class="text-gray-300 mb-3 text-lg">Smart text splitting maintains context while optimizing for retrieval</p>
+          <p class="text-sm text-gray-400 italic">Context-aware chunking with configurable size and overlap parameters</p>
+        </div>
+      </div>
+
+      <div class="flow-step" data-step="4">
+        <div class="ml-8">
+          <h4 class="text-xl font-semibold text-white mb-3">Vector Embedding Generation</h4>
+          <p class="text-gray-300 mb-3 text-lg">Text chunks are converted to high-dimensional semantic vectors</p>
+          <p class="text-sm text-gray-400 italic">Using state-of-the-art transformer models for semantic understanding</p>
+        </div>
+      </div>
+
+      <div class="flow-step" data-step="5">
+        <div class="ml-8">
+          <h4 class="text-xl font-semibold text-white mb-3">Vector Index Creation</h4>
+          <p class="text-gray-300 mb-3 text-lg">Optimized vector indexes enable fast similarity search</p>
+          <p class="text-sm text-gray-400 italic">Efficient data structures with sub-second query performance</p>
+        </div>
+      </div>
+
+      <div class="flow-step" data-step="6">
+        <div class="ml-8">
+          <h4 class="text-xl font-semibold text-white mb-3">Query Engine Configuration</h4>
+          <p class="text-gray-300 mb-3 text-lg">Document-specific query engines with optimization strategies</p>
+          <p class="text-sm text-gray-400 italic">Tailored retrieval algorithms for each document type and content</p>
+        </div>
+      </div>
+
+      <div class="flow-step" data-step="7">
+        <div class="ml-8">
+          <h4 class="text-xl font-semibold text-white mb-3">Router Agent Setup</h4>
+          <p class="text-gray-300 mb-3 text-lg">Hybrid routing system with multiple fallback strategies</p>
+          <p class="text-sm text-gray-400 italic">LLM intelligence combined with keyword reliability and performance monitoring</p>
+        </div>
+      </div>
+
+      <div class="flow-step" data-step="8">
+        <div class="ml-8">
+          <h4 class="text-xl font-semibold text-white mb-3">Intelligent Query Processing</h4>
+          <p class="text-gray-300 mb-3 text-lg">User queries are routed to appropriate knowledge bases with context awareness</p>
+          <p class="text-sm text-gray-400 italic">Real-time routing decisions with comprehensive analytics and response optimization</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Flow Diagram -->
+    <div class="mt-8 p-6 bg-gradient-to-r from-blue-50/10 to-purple-50/10 rounded-lg border border-white/10">
+      <h4 class="text-lg font-semibold mb-4 text-white">📊 Visual Flow Representation</h4>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="text-center">
+          <div class="w-16 h-16 mx-auto mb-3 bg-blue-500/20 rounded-full flex items-center justify-center text-2xl border border-blue-400/30">
+            📤
+          </div>
+          <h5 class="font-medium text-blue-300">Input Processing</h5>
+          <p class="text-sm text-gray-400">Document upload, validation, parsing</p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 mx-auto mb-3 bg-purple-500/20 rounded-full flex items-center justify-center text-2xl border border-purple-400/30">
+            ✂️
+          </div>
+          <h5 class="font-medium text-purple-300">Text Processing</h5>
+          <p class="text-sm text-gray-400">Chunking, analysis, optimization</p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 mx-auto mb-3 bg-green-500/20 rounded-full flex items-center justify-center text-2xl border border-green-400/30">
+            🧠
+          </div>
+          <h5 class="font-medium text-green-300">AI Processing</h5>
+          <p class="text-sm text-gray-400">Vectorization, indexing, routing intelligence</p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 mx-auto mb-3 bg-orange-500/20 rounded-full flex items-center justify-center text-2xl border border-orange-400/30">
+            🎯
+          </div>
+          <h5 class="font-medium text-orange-300">Output Generation</h5>
+          <p class="text-sm text-gray-400">Query responses, routing decisions</p>
+        </div>
+      </div>
+
+      <!-- Flow Arrows -->
+      <div class="mt-6 flex justify-center items-center space-x-4">
+        <div class="text-blue-400">📤</div>
+        <div class="flex-1 h-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded"></div>
+        <div class="text-purple-400">✂️</div>
+        <div class="flex-1 h-1 bg-gradient-to-r from-purple-400 to-green-400 rounded"></div>
+        <div class="text-green-400">🧠</div>
+        <div class="flex-1 h-1 bg-gradient-to-r from-green-400 to-orange-400 rounded"></div>
+        <div class="text-orange-400">🎯</div>
+      </div>
+    </div>
+
+    <!-- Process Metrics -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-blue-500/10 border border-blue-400/20 rounded-lg p-4">
+        <h5 class="font-semibold text-blue-300 mb-2">⏱️ Processing Speed</h5>
+        <div class="text-2xl font-bold text-blue-400 mb-1">< 30s</div>
+        <p class="text-sm text-gray-400">Average document processing time</p>
+      </div>
+
+      <div class="bg-green-500/10 border border-green-400/20 rounded-lg p-4">
+        <h5 class="font-semibold text-green-300 mb-2">🎯 Accuracy</h5>
+        <div class="text-2xl font-bold text-green-400 mb-1">98%</div>
+        <p class="text-sm text-gray-400">Content extraction accuracy</p>
+      </div>
+
+      <div class="bg-purple-500/10 border border-purple-400/20 rounded-lg p-4">
+        <h5 class="font-semibold text-purple-300 mb-2">📦 Throughput</h5>
+        <div class="text-2xl font-bold text-purple-400 mb-1">100+</div>
+        <p class="text-sm text-gray-400">Documents per hour</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Components View -->
+  <div id="components-view" class="space-y-8" style="display: none;">
+    <div class="card-gradient shadow-2xl rounded-2xl p-8">
+      <h3 class="text-2xl font-semibold mb-6 text-white">🎨 Frontend Layer</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">⚛️ React Interface</h4>
+          <ul class="text-sm text-gray-300 space-y-3">
+            <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>State Management:</strong> LocalStorage persistence across sessions</li>
+            <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Real-time Updates:</strong> Live status indicators and progress tracking</li>
+            <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Responsive Design:</strong> Mobile-first, adaptive layouts</li>
+            <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Component Architecture:</strong> Modular, reusable components</li>
+          </ul>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">🎯 Key Features</h4>
+          <ul class="text-sm text-gray-300 space-y-3">
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span><strong>Tab Navigation:</strong> Organized workflow management</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span><strong>Progress Tracking:</strong> Real-time test execution monitoring</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span><strong>Interactive Elements:</strong> Drag & drop, tooltips, animations</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span><strong>Error Handling:</strong> User-friendly error messages and recovery</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-gradient shadow-2xl rounded-2xl p-8">
+      <h3 class="text-2xl font-semibold mb-6 text-white">🔧 Backend Layer</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">🌐 Flask API Server</h4>
+          <ul class="text-sm text-gray-300 space-y-3">
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>RESTful Design:</strong> Standard HTTP methods and status codes</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>CORS Support:</strong> Cross-origin request handling</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>File Management:</strong> Secure upload, validation, processing</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Error Handling:</strong> Comprehensive exception management</li>
+          </ul>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">📊 API Endpoints</h4>
+          <ul class="text-sm text-gray-300 space-y-3">
+            <li class="flex items-start"><span class="text-yellow-400 mr-2">•</span><strong>/api/configure:</strong> Model configuration management</li>
+            <li class="flex items-start"><span class="text-yellow-400 mr-2">•</span><strong>/api/upload:</strong> Multi-file upload processing</li>
+            <li class="flex items-start"><span class="text-yellow-400 mr-2">•</span><strong>/api/create-indexes:</strong> Vector index generation</li>
+            <li class="flex items-start"><span class="text-yellow-400 mr-2">•</span><strong>/api/query:</strong> Intelligent query routing</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-gradient shadow-2xl rounded-2xl p-8">
+      <h3 class="text-2xl font-semibold mb-6 text-white">🤖 AI & ML Layer</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">🧠 LLM Engine</h4>
+          <ul class="text-sm text-gray-300 space-y-2">
+            <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Model Support:</strong> DeepSeek, GPT-4, Llama</li>
+            <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Local Deployment:</strong> LM Studio integration</li>
+            <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Query Understanding:</strong> Context-aware processing</li>
+            <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Response Generation:</strong> Coherent, relevant answers</li>
+          </ul>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">🔢 Embedding Engine</h4>
+          <ul class="text-sm text-gray-300 space-y-2">
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span><strong>Vector Models:</strong> MiniLM, Ada-002, custom</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span><strong>Semantic Search:</strong> Meaning-based retrieval</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span><strong>Efficient Storage:</strong> Optimized vector indexing</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span><strong>Similarity Matching:</strong> Cosine similarity ranking</li>
+          </ul>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">🚦 Router Intelligence</h4>
+          <ul class="text-sm text-gray-300 space-y-2">
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Hybrid Strategy:</strong> LLM + keyword routing</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Fallback Logic:</strong> Automatic strategy switching</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Decision Tracking:</strong> Routing analytics</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Performance Optimization:</strong> Adaptive algorithms</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-gradient shadow-2xl rounded-2xl p-8">
+      <h3 class="text-2xl font-semibold mb-6 text-white">💾 Data Layer</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">📄 Document Processing</h4>
+          <ul class="text-sm text-gray-300 space-y-2">
+            <li class="flex items-start"><span class="text-orange-400 mr-2">•</span><strong>Format Support:</strong> PDF, DOCX, TXT, JSON, MD</li>
+            <li class="flex items-start"><span class="text-orange-400 mr-2">•</span><strong>Smart Chunking:</strong> Context-preserving text splitting</li>
+            <li class="flex items-start"><span class="text-orange-400 mr-2">•</span><strong>Metadata Extraction:</strong> File properties and structure</li>
+            <li class="flex items-start"><span class="text-orange-400 mr-2">•</span><strong>JSON Analysis:</strong> Deep structure understanding</li>
+          </ul>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-medium text-white text-lg">🗄️ Vector Storage</h4>
+          <ul class="text-sm text-gray-300 space-y-2">
+            <li class="flex items-start"><span class="text-red-400 mr-2">•</span><strong>In-Memory Store:</strong> Fast access and retrieval</li>
+            <li class="flex items-start"><span class="text-red-400 mr-2">•</span><strong>Index Optimization:</strong> Efficient similarity search</li>
+            <li class="flex items-start"><span class="text-red-400 mr-2">•</span><strong>Scalable Design:</strong> Handles large document sets</li>
+            <li class="flex items-start"><span class="text-red-400 mr-2">•</span><strong>Query Performance:</strong> Sub-second response times</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance View -->
+  <div id="performance-view" class="card-gradient shadow-2xl rounded-2xl p-8" style="display: none;">
+    <h3 class="text-2xl font-semibold mb-6 text-white">⚡ Performance & Metrics</h3>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="text-4xl font-bold text-blue-400 mb-3">< 2s</div>
+        <div class="font-medium text-white text-lg">Average Query Time</div>
+        <div class="text-sm text-gray-300 mt-2">Optimized for real-time responses</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="text-4xl font-bold text-green-400 mb-3">95%</div>
+        <div class="font-medium text-white text-lg">Routing Accuracy</div>
+        <div class="text-sm text-gray-300 mt-2">Intelligent document selection</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="text-4xl font-bold text-purple-400 mb-3">100MB</div>
+        <div class="font-medium text-white text-lg">Max File Size</div>
+        <div class="text-sm text-gray-300 mt-2">Large document support</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="text-4xl font-bold text-orange-400 mb-3">24+</div>
+        <div class="font-medium text-white text-lg">Test Cases</div>
+        <div class="text-sm text-gray-300 mt-2">Comprehensive validation</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="text-4xl font-bold text-red-400 mb-3">3x</div>
+        <div class="font-medium text-white text-lg">Fallback Layers</div>
+        <div class="text-sm text-gray-300 mt-2">LLM → Keyword → Default</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="text-4xl font-bold text-indigo-400 mb-3">∞</div>
+        <div class="font-medium text-white text-lg">Scalability</div>
+        <div class="text-sm text-gray-300 mt-2">Horizontal scaling ready</div>
+      </div>
+    </div>
+
+    <!-- Performance Optimization Strategies -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="component-detail">
+        <h4 class="text-lg font-semibold mb-3 text-blue-300">🚀 Speed Optimizations</h4>
+        <ul class="space-y-2 text-sm text-gray-300">
+          <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Vector Indexing:</strong> Pre-computed similarity matrices</li>
+          <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Caching Strategy:</strong> Query result memoization</li>
+          <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Async Processing:</strong> Non-blocking I/O operations</li>
+          <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Batch Operations:</strong> Bulk document processing</li>
+          <li class="flex items-start"><span class="text-blue-400 mr-2">•</span><strong>Memory Management:</strong> Efficient resource utilization</li>
+        </ul>
+      </div>
+
+      <div class="component-detail">
+        <h4 class="text-lg font-semibold mb-3 text-green-300">🛡️ Reliability Features</h4>
+        <ul class="space-y-2 text-sm text-gray-300">
+          <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Fallback Routing:</strong> Multiple strategy layers</li>
+          <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Error Recovery:</strong> Graceful degradation</li>
+          <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>State Persistence:</strong> Session continuity</li>
+          <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Input Validation:</strong> Robust error handling</li>
+          <li class="flex items-start"><span class="text-green-400 mr-2">•</span><strong>Health Monitoring:</strong> System status tracking</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Scalability Considerations -->
+    <div class="mt-6 component-detail">
+      <h4 class="text-lg font-semibold mb-3 text-purple-300">📈 Scalability & Future Enhancements</h4>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <h5 class="font-medium text-white mb-2">🔄 Current Capabilities</h5>
+          <ul class="text-sm text-gray-300 space-y-1">
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span>In-memory vector storage</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span>Single-instance deployment</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span>Local model serving</li>
+            <li class="flex items-start"><span class="text-purple-400 mr-2">•</span>File-based persistence</li>
+          </ul>
+        </div>
+
+        <div>
+          <h5 class="font-medium text-white mb-2">⬆️ Scaling Options</h5>
+          <ul class="text-sm text-gray-300 space-y-1">
+            <li class="flex items-start"><span class="text-yellow-400 mr-2">•</span>External vector databases</li>
+            <li class="flex items-start"><span class="text-yellow-400 mr-2">•</span>Distributed computing</li>
+            <li class="flex items-start"><span class="text-yellow-400 mr-2">•</span>Cloud model APIs</li>
+            <li class="flex items-start"><span class="text-yellow-400 mr-2">•</span>Database integration</li>
+          </ul>
+        </div>
+
+        <div>
+          <h5 class="font-medium text-white mb-2">🚀 Future Features</h5>
+          <ul class="text-sm text-gray-300 space-y-1">
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span>Multi-modal support</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span>Advanced analytics</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span>User authentication</li>
+            <li class="flex items-start"><span class="text-green-400 mr-2">•</span>API rate limiting</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript for Data Flow Interactions -->
+  <script>
+    // Complete JavaScript for Architecture Demo
+    let currentView = 'overview';
+    let activeComponent = null;
+    let animationsRunning = true;
+    let demoRunning = false;
+
+    const componentDetails = {
+      react_ui: {
+        icon: '⚛️',
+        name: 'React UI',
+        description: 'Modern React interface with state management and real-time updates',
+        technologies: ['React 18', 'Tailwind CSS', 'LocalStorage API', 'Real-time State'],
+        features: ['Component-based Architecture', 'State Persistence', 'Responsive Design', 'Error Boundaries'],
+        responsibilities: ['User Interface Rendering', 'State Management', 'Event Handling', 'Real-time Updates']
+      },
+      state_manager: {
+        icon: '💾',
+        name: 'State Manager',
+        description: 'LocalStorage-based state persistence and session management',
+        technologies: ['LocalStorage API', 'Session Management', 'State Synchronization'],
+        features: ['Cross-session Persistence', 'Automatic State Sync', 'Data Validation'],
+        responsibilities: ['State Persistence', 'Session Recovery', 'Data Integrity']
+      },
+      flask_api: {
+        icon: '🌐',
+        name: 'Flask API',
+        description: 'RESTful Flask API server with comprehensive endpoints',
+        technologies: ['Flask', 'Flask-CORS', 'Werkzeug', 'JSON Serialization'],
+        features: ['REST Endpoints', 'CORS Support', 'Error Handling', 'Request Validation'],
+        responsibilities: ['HTTP Request Routing', 'Business Logic', 'Response Management']
+      },
+      file_handler: {
+        icon: '📤',
+        name: 'File Handler',
+        description: 'Multi-format file upload and validation system',
+        technologies: ['Werkzeug FileStorage', 'File Validation', 'Security Checks'],
+        features: ['Multi-format Support', 'Size Validation', 'Security Scanning', 'Metadata Extraction'],
+        responsibilities: ['File Upload Processing', 'Validation', 'Secure Storage']
+      },
+      document_parser: {
+        icon: '📄',
+        name: 'Document Parser',
+        description: 'Multi-format document parser with JSON analysis',
+        technologies: ['SimpleDirectoryReader', 'JSON Parser', 'PDF Extractor', 'Text Analyzer'],
+        features: ['Multi-format Parsing', 'JSON Structure Analysis', 'Metadata Extraction', 'Content Validation'],
+        responsibilities: ['Content Extraction', 'Format Detection', 'Structure Analysis']
+      },
+      text_chunker: {
+        icon: '✂️',
+        name: 'Text Chunker',
+        description: 'Intelligent text chunking with context preservation',
+        technologies: ['SentenceSplitter', 'Context Analysis', 'Overlap Management'],
+        features: ['Smart Chunking', 'Context Preservation', 'Configurable Size', 'Overlap Control'],
+        responsibilities: ['Text Segmentation', 'Context Maintenance', 'Chunk Optimization']
+      },
+      embedding_engine: {
+        icon: '🔢',
+        name: 'Embedding Engine',
+        description: 'Vector embedding generation using transformer models',
+        technologies: ['HuggingFace Transformers', 'OpenAI Embeddings', 'Sentence Transformers'],
+        features: ['Semantic Vectorization', 'Multi-model Support', 'Batch Processing', 'Caching'],
+        responsibilities: ['Text Vectorization', 'Model Management', 'Performance Optimization']
+      },
+      vector_indexer: {
+        icon: '🗂️',
+        name: 'Vector Indexer',
+        description: 'Efficient vector indexing and similarity search',
+        technologies: ['LlamaIndex VectorStore', 'Similarity Search', 'Index Optimization'],
+        features: ['Fast Indexing', 'Similarity Search', 'Memory Optimization', 'Query Acceleration'],
+        responsibilities: ['Vector Storage', 'Index Creation', 'Search Optimization']
+      },
+      query_engine: {
+        icon: '⚙️',
+        name: 'Query Engine',
+        description: 'Query engine factory with document-specific optimization',
+        technologies: ['Custom Query Logic', 'Retrieval Algorithms', 'Response Ranking'],
+        features: ['Document-specific Engines', 'Retrieval Optimization', 'Result Ranking', 'Context Integration'],
+        responsibilities: ['Query Processing', 'Result Retrieval', 'Response Generation']
+      },
+      llm_engine: {
+        icon: '🧠',
+        name: 'LLM Engine',
+        description: 'Large Language Model for intelligent text processing',
+        technologies: ['LlamaIndex', 'OpenAI-Like API', 'LM Studio', 'Model Abstraction'],
+        features: ['Multi-model Support', 'Context Understanding', 'Response Generation', 'Fine-tuning'],
+        responsibilities: ['Natural Language Understanding', 'Text Generation', 'Context Analysis']
+      },
+      router_agent: {
+        icon: '🚦',
+        name: 'Router Agent',
+        description: 'Hybrid routing agent with LLM and keyword strategies',
+        technologies: ['Custom Router Logic', 'LLM Selector', 'Keyword Matching', 'Fallback Systems'],
+        features: ['Hybrid Routing', 'Strategy Switching', 'Performance Monitoring', 'Decision Analytics'],
+        responsibilities: ['Route Selection', 'Strategy Management', 'Performance Optimization']
+      },
+      vector_store: {
+        icon: '🗄️',
+        name: 'Vector Store',
+        description: 'High-performance vector database with similarity search',
+        technologies: ['In-Memory Storage', 'Vector Indexing', 'Similarity Algorithms', 'Query Optimization'],
+        features: ['Fast Retrieval', 'Similarity Search', 'Scalable Storage', 'Query Acceleration'],
+        responsibilities: ['Data Persistence', 'Vector Storage', 'Query Processing']
+      }
+    };
+
+    function showView(viewId) {
+      // Hide all views
+      document.querySelectorAll('[id$="-view"]').forEach(view => {
+        view.style.display = 'none';
+      });
+
+      // Show selected view
+      document.getElementById(viewId + '-view').style.display = 'block';
+
+      // Update tab buttons
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+
+      // Update description
+      const descriptions = {
+        overview: 'Complete system architecture with interactive components and real-time animations',
+        dataflow: 'Step-by-step process flow showing how data moves through the system',
+        components: 'Detailed breakdown of each system layer and component',
+        performance: 'System performance metrics, optimizations, and scalability information'
+      };
+
+      document.getElementById('view-description').textContent = descriptions[viewId];
+      currentView = viewId;
+    }
+
+    function selectComponent(componentId, event) {
+      // Clear previous selection
+      document.querySelectorAll('.architecture-node').forEach(node => {
+        node.classList.remove('active');
+      });
+
+      if (activeComponent === componentId) {
+        activeComponent = null;
+        document.getElementById('component-details').style.display = 'none';
+        return;
+      }
+
+      // Set new selection
+      activeComponent = componentId;
+      if (event && event.target) {
+        event.target.classList.add('active');
+      }
+
+      // Show component details
+      const component = componentDetails[componentId];
+      if (component) {
+        document.getElementById('component-content').innerHTML = `
+      <div class="flex items-center mb-6">
+        <span class="text-4xl mr-4">${component.icon}</span>
+        <div>
+          <h4 class="text-2xl font-bold text-white">${component.name}</h4>
+          <p class="text-gray-300 text-lg">${component.description}</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <h5 class="font-semibold text-blue-400 mb-3 text-lg">🛠️ Technologies</h5>
+          <ul class="text-sm text-gray-300 space-y-2">
+            ${component.technologies.map(tech => `<li class="flex items-start"><span class="text-blue-400 mr-2">•</span>${tech}</li>`).join('')}
+          </ul>
+        </div>
+
+        <div>
+          <h5 class="font-semibold text-purple-400 mb-3 text-lg">⭐ Key Features</h5>
+          <ul class="text-sm text-gray-300 space-y-2">
+            ${component.features.map(feature => `<li class="flex items-start"><span class="text-purple-400 mr-2">•</span>${feature}</li>`).join('')}
+          </ul>
+        </div>
+
+        <div>
+          <h5 class="font-semibold text-green-400 mb-3 text-lg">🎯 Responsibilities</h5>
+          <ul class="text-sm text-gray-300 space-y-2">
+            ${component.responsibilities.map(resp => `<li class="flex items-start"><span class="text-green-400 mr-2">•</span>${resp}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    `;
+        document.getElementById('component-details').style.display = 'block';
+      }
+    }
+
+    function runDemo(demoType) {
+      if (demoRunning) return;
+
+      demoRunning = true;
+      document.getElementById('demo-status').style.display = 'block';
+
+      // Disable demo buttons
+      document.querySelectorAll('.demo-button').forEach(btn => {
+        if (!btn.id.includes('animation')) btn.disabled = true;
+      });
+
+      // Clear previous selections
+      document.querySelectorAll('.architecture-node').forEach(node => {
+        node.classList.remove('active');
+      });
+
+      const flows = {
+        upload: ['react_ui', 'flask_api', 'file_handler', 'document_parser'],
+        processing: ['document_parser', 'text_chunker', 'embedding_engine', 'vector_indexer'],
+        query: ['react_ui', 'flask_api', 'router_agent', 'llm_engine', 'vector_store'],
+        routing: ['router_agent', 'llm_engine', 'query_engine', 'vector_store', 'flask_api']
+      };
+
+      const flow = flows[demoType] || flows.query;
+      let currentStep = 0;
+
+      function highlightNext() {
+        // Clear previous highlight
+        document.querySelectorAll('.architecture-node').forEach(node => {
+          node.classList.remove('active');
+        });
+
+        if (currentStep < flow.length) {
+          // Find and highlight current component
+          const componentId = flow[currentStep];
+          const nodes = document.querySelectorAll('.architecture-node');
+          nodes.forEach(node => {
+            if (node.getAttribute('onclick')?.includes(componentId)) {
+              node.classList.add('active');
+            }
+          });
+
+          currentStep++;
+          setTimeout(highlightNext, 1200);
+        } else {
+          // Demo complete
+          setTimeout(() => {
+            document.querySelectorAll('.architecture-node').forEach(node => {
+              node.classList.remove('active');
+            });
+            document.getElementById('demo-status').style.display = 'none';
+            document.querySelectorAll('.demo-button').forEach(btn => {
+              btn.disabled = false;
+            });
+            demoRunning = false;
+          }, 1000);
+        }
+      }
+
+      highlightNext();
+    }
+
+    function toggleAnimations() {
+      animationsRunning = !animationsRunning;
+      const lines = document.querySelectorAll('.connection-line');
+      const flows = document.querySelectorAll('.data-flow, .particle-trail');
+      const button = document.getElementById('animation-toggle');
+
+      if (animationsRunning) {
+        lines.forEach(line => line.classList.add('animated'));
+        flows.forEach(flow => flow.style.display = 'block');
+        button.textContent = '⏸️ Pause Animations';
+      } else {
+        lines.forEach(line => line.classList.remove('animated'));
+        flows.forEach(flow => flow.style.display = 'none');
+        button.textContent = '▶️ Start Animations';
+      }
+    }
+
+    // Tooltip functionality
+    function showTooltip(event, text) {
+      let tooltip = document.getElementById('tooltip');
+      if (!tooltip) return; // Safety check
+
+      tooltip.textContent = text;
+      tooltip.style.left = event.pageX + 15 + 'px';
+      tooltip.style.top = event.pageY - 40 + 'px';
+      tooltip.classList.add('visible');
+    }
+
+    function hideTooltip() {
+      const tooltip = document.getElementById('tooltip');
+      if (!tooltip) return; // Safety check
+
+      tooltip.classList.remove('visible');
+    }
+
+    // Enhanced flow visualization
+    function highlightFlowStep(stepNumber) {
+      // Remove previous highlights
+      document.querySelectorAll('.flow-step').forEach(step => {
+        step.classList.remove('active-flow');
+      });
+
+      // Highlight current step
+      const currentStep = document.querySelector(`[data-step="${stepNumber}"]`);
+      if (currentStep) {
+        currentStep.classList.add('active-flow');
+        currentStep.style.borderLeftColor = '#fbbf24';
+        currentStep.style.transform = 'translateX(12px)';
+
+        setTimeout(() => {
+          currentStep.style.borderLeftColor = '';
+          currentStep.style.transform = '';
+        }, 2000);
+      }
+    }
+
+    // Animate flow steps on view
+    function animateDataFlow() {
+      const steps = document.querySelectorAll('.flow-step');
+      steps.forEach((step, index) => {
+        setTimeout(() => {
+          step.style.opacity = '0';
+          step.style.transform = 'translateX(-20px)';
+          step.style.transition = 'all 0.5s ease';
+
+          setTimeout(() => {
+            step.style.opacity = '1';
+            step.style.transform = 'translateX(0)';
+          }, 100);
+        }, index * 200);
+      });
+    }
+
+    // Add tooltip event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      // Create tooltip if it doesn't exist
+      if (!document.getElementById('tooltip')) {
+        const tooltip = document.createElement('div');
+        tooltip.id = 'tooltip';
+        tooltip.className = 'tooltip';
+        document.body.appendChild(tooltip);
+      }
+
+      document.querySelectorAll('[data-tooltip]').forEach(element => {
+        element.addEventListener('mouseenter', function(e) {
+          showTooltip(e, this.getAttribute('data-tooltip'));
+        });
+
+        element.addEventListener('mouseleave', hideTooltip);
+
+        element.addEventListener('mousemove', function(e) {
+          const tooltip = document.getElementById('tooltip');
+          if (tooltip) { // Safety check
+            tooltip.style.left = e.pageX + 15 + 'px';
+            tooltip.style.top = e.pageY - 40 + 'px';
+          }
+        });
+      });
+
+      // Observer for dataflow view animations
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.target.id === 'dataflow-view' && mutation.target.style.display !== 'none') {
+            setTimeout(animateDataFlow, 500);
+          }
+        });
+      });
+
+      const dataflowView = document.getElementById('dataflow-view');
+      if (dataflowView) {
+        observer.observe(dataflowView, { attributes: true, attributeFilter: ['style'] });
+      }
+    });
+
+    // Auto-run demo on load
+    setTimeout(() => {
+      runDemo('processing');
+    }, 3000);
+
+    // Enhanced real-time simulation
+    setInterval(() => {
+      if (!demoRunning && animationsRunning) {
+        // Randomly highlight components
+        const componentIds = Object.keys(componentDetails);
+        const randomComponent = componentIds[Math.floor(Math.random() * componentIds.length)];
+
+        const nodes = document.querySelectorAll('.architecture-node');
+        nodes.forEach(node => {
+          if (node.getAttribute('onclick')?.includes(randomComponent)) {
+            node.style.transform = 'scale(1.05) translateY(-3px)';
+            node.style.boxShadow = '0 15px 45px rgba(59, 130, 246, 0.4)';
+
+            setTimeout(() => {
+              node.style.transform = '';
+              node.style.boxShadow = '';
+            }, 500);
+          }
+        });
+      }
+    }, 4000);
+
+    // Add random particle effects
+    setInterval(() => {
+      if (animationsRunning) {
+        const container = document.querySelector('.architecture-container');
+        if (container) {
+          const particle = document.createElement('div');
+          particle.className = 'data-flow';
+          particle.style.left = Math.random() * (container.offsetWidth - 20) + 'px';
+          particle.style.top = Math.random() * (container.offsetHeight - 20) + 'px';
+          particle.style.animationDelay = '0s';
+          container.appendChild(particle);
+
+          setTimeout(() => {
+            if (particle.parentNode) {
+              particle.remove();
+            }
+          }, 4000);
+        }
+      }
+    }, 6000);
+  </script>
+
+</div>
+</body>
+</html>
