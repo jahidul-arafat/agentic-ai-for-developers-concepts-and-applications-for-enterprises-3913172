@@ -1,0 +1,379 @@
+Product Knowledge Database
+
+MACBOOK PRO LINEUP:
+
+MacBook Pro 13" (M2, 2022):
+- Processor: Apple M2 chip with 8-core CPU
+- Memory: 8GB or 16GB unified memory
+- Storage: 256GB, 512GB, 1TB, or 2TB SSD
+- Display: 13.3" Retina display (2560x1600)
+- Battery: Up to 20 hours video playback
+- Ports: 2x Thunderbolt/USB 4, headphone jack
+- Starting Price: $1,299
+- Common Issues: None significant, reliable design
+- Warranty: 1 year standard, AppleCare+ available
+- Return Policy: 30 days from delivery
+- Target Customer: Students, professionals, everyday use
+
+MacBook Pro 14" (M3 Pro, 2023):
+- Processor: Apple M3 Pro chip with 11-core CPU
+- Memory: 18GB unified memory (standard)
+- Storage: 512GB, 1TB, 2TB, 4TB, or 8TB SSD
+- Display: 14.2" Liquid Retina XDR (3024x1964)
+- Battery: Up to 18 hours video playback
+- Ports: 3x Thunderbolt 4, HDMI, SDXC, MagSafe 3
+- Starting Price: $1,999
+- Common Issues: Occasional display blooming (normal for mini-LED)
+- Warranty: 1 year standard, AppleCare+ available
+- Return Policy: 30 days from delivery
+- Target Customer: Creative professionals, developers
+
+MacBook Pro 16" (M3 Max, 2023):
+- Processor: Apple M3 Max chip with 14-core CPU
+- Memory: 36GB unified memory (standard)
+- Storage: 1TB, 2TB, 4TB, or 8TB SSD
+- Display: 16.2" Liquid Retina XDR (3456x2234)
+- Battery: Up to 22 hours video playback
+- Ports: 3x Thunderbolt 4, HDMI, SDXC, MagSafe 3
+- Starting Price: $3,499
+- Common Issues: High performance may cause thermal throttling under extreme loads
+- Warranty: 1 year standard, AppleCare+ available
+- Return Policy: 30 days from delivery
+- Target Customer: Power users, video editors, 3D professionals
+
+GAMING LAPTOPS:
+
+ASUS ROG Strix G15:
+- Processor: AMD Ryzen 7 or 9, Intel Core i7 or i9
+- Graphics: NVIDIA RTX 4060, 4070, or 4080
+- Memory: 16GB or 32GB DDR4/DDR5
+- Storage: 512GB or 1TB NVMe SSD
+- Display: 15.6" FHD 144Hz or QHD 165Hz
+- Battery: 4-6 hours typical gaming use
+- Starting Price: $1,199
+- Common Issues: Fan noise under load, thermal management
+- Warranty: 1 year manufacturer warranty
+- Return Policy: 15 days from delivery
+- Target Customer: Gamers, streaming, content creation
+
+Alienware m15 R7:
+- Processor: Intel Core i7-12700H or i9-12900H
+- Graphics: NVIDIA RTX 4060, 4070, or 4080
+- Memory: 16GB or 32GB DDR5
+- Storage: 512GB, 1TB, or 2TB NVMe SSD
+- Display: 15.6" FHD 360Hz or QHD 240Hz
+- Battery: 3-5 hours typical use
+- Starting Price: $1,799
+- Common Issues: Battery life, weight for portability
+- Warranty: 1 year premium support included
+- Return Policy: 30 days from delivery
+- Target Customer: Serious gamers, esports, VR
+
+Razer Blade 15:
+- Processor: Intel Core i7-13700H
+- Graphics: NVIDIA RTX 4070 or 4080
+- Memory: 16GB or 32GB DDR5
+- Storage: 1TB NVMe SSD
+- Display: 15.6" QHD 240Hz or 4K OLED 60Hz
+- Battery: 4-6 hours productivity use
+- Starting Price: $2,499
+- Common Issues: Premium price, limited upgradeability
+- Warranty: 1 year limited warranty
+- Return Policy: 30 days from delivery
+- Target Customer: Premium gaming, creative professionals
+
+BUSINESS LAPTOPS:
+
+ThinkPad X1 Carbon Gen 11:
+- Processor: Intel Core i5-1335U or i7-1365U
+- Memory: 16GB or 32GB LPDDR5
+- Storage: 256GB, 512GB, 1TB, or 2TB SSD
+- Display: 14" WUXGA, 2.2K, or 2.8K OLED
+- Battery: Up to 15 hours typical use
+- Starting Price: $1,729
+- Common Issues: Limited ports, premium pricing
+- Warranty: 1 year depot, on-site available
+- Return Policy: 30 days from delivery
+- Target Customer: Business executives, frequent travelers
+
+Dell Latitude 7430:
+- Processor: Intel Core i5-1245U or i7-1265U
+- Memory: 8GB, 16GB, or 32GB DDR5
+- Storage: 256GB, 512GB, or 1TB SSD
+- Display: 14" FHD or QHD+ touch
+- Battery: Up to 12 hours typical use
+- Starting Price: $1,399
+- Common Issues: Build quality varies by configuration
+- Warranty: 1 year ProSupport included
+- Return Policy: 30 days from delivery
+- Target Customer: Corporate users, IT departments
+
+HP EliteBook 840 G9:
+- Processor: Intel Core i5-1235U or i7-1255U
+- Memory: 8GB, 16GB, or 32GB DDR5
+- Storage: 256GB, 512GB, or 1TB SSD
+- Display: 14" FHD or FHD touch
+- Battery: Up to 11 hours typical use
+- Starting Price: $1,299
+- Common Issues: Keyboard feel preference varies
+- Warranty: 1 year limited warranty
+- Return Policy: 30 days from delivery
+- Target Customer: Business professionals, enterprise
+
+ACCESSORIES AND PERIPHERALS:
+
+Apple Magic Keyboard:
+- Compatibility: Mac and iPad (USB-C and Lightning versions)
+- Features: Scissor mechanism, rechargeable battery
+- Battery Life: 1 month typical use
+- Price: $99 (standard), $179 (with Touch ID)
+- Common Issues: Key wear over time, connectivity drops
+- Warranty: 1 year limited warranty
+- Return Policy: 15 days from delivery
+
+Logitech MX Master 3S:
+- Connectivity: Bluetooth, USB-C receiver
+- Features: Precision scroll wheel, customizable buttons
+- Battery Life: 70 days on full charge
+- Price: $99
+- Common Issues: Software setup complexity for some users
+- Warranty: 1 year limited warranty
+- Return Policy: 15 days from delivery
+
+Dell UltraSharp U2723QE Monitor:
+- Size: 27" 4K IPS display
+- Resolution: 3840x2160 at 60Hz
+- Features: USB-C hub, adjustable stand
+- Price: $599
+- Common Issues: USB-C compatibility with some laptops
+- Warranty: 3 years advanced exchange
+- Return Policy: 30 days from delivery
+
+HDMI and USB-C Cables:
+- HDMI 2.1: Supports 4K at 120Hz, $29-49
+- USB-C to USB-A: Data and charging, $19-29
+- USB-C to HDMI: 4K video output, $39-59
+- Common Issues: Compatibility with specific devices
+- Warranty: 30 days to 1 year depending on brand
+- Return Policy: 5 days from delivery
+
+External Storage:
+SanDisk Extreme Portable SSD:
+- Capacities: 500GB, 1TB, 2TB, 4TB
+- Speed: Up to 1050MB/s read/write
+- Features: Rugged design, password protection
+- Price: $89-399 depending on capacity
+- Common Issues: Heat generation during sustained use
+- Warranty: 5 year limited warranty
+- Return Policy: 30 days from delivery
+
+Western Digital My Passport:
+- Capacities: 1TB, 2TB, 4TB, 5TB
+- Speed: USB 3.0, up to 5Gbps
+- Features: Hardware encryption, backup software
+- Price: $59-179 depending on capacity
+- Common Issues: Software compatibility with Mac
+- Warranty: 3 year limited warranty
+- Return Policy: 30 days from delivery
+
+WEBCAMS AND AUDIO:
+
+Logitech C920s HD Pro Webcam:
+- Resolution: 1080p at 30fps
+- Features: Privacy shutter, noise reduction
+- Compatibility: Windows, Mac, Chrome OS
+- Price: $79
+- Common Issues: Auto-focus in low light
+- Warranty: 2 year limited warranty
+- Return Policy: 25 days from delivery
+
+Blue Yeti USB Microphone:
+- Type: Condenser microphone
+- Features: Multiple pickup patterns, mute button
+- Compatibility: Plug-and-play USB
+- Price: $119
+- Common Issues: Sensitivity to background noise
+- Warranty: 2 year limited warranty
+- Return Policy: 20 days from delivery
+
+Sony WH-1000XM5 Headphones:
+- Type: Over-ear noise canceling
+- Battery: 30 hours with ANC on
+- Features: Industry-leading noise cancellation
+- Price: $399
+- Common Issues: Comfort for long wearing sessions
+- Warranty: 1 year limited warranty
+- Return Policy: 20 days from delivery
+
+PRODUCT COMPARISON GUIDELINES:
+
+MacBook Pro vs Gaming Laptops:
+- MacBook Pro: Better battery life, build quality, productivity
+- Gaming Laptops: Better graphics performance, value for gaming
+- Consider use case: Content creation vs gaming focus
+
+Business vs Consumer Laptops:
+- Business: Better warranty, security features, durability
+- Consumer: Lower price, more variety, latest consumer features
+- Consider support needs and total cost of ownership
+
+New vs Refurbished:
+- New: Full warranty, latest specifications
+- Refurbished: 30-50% savings, shorter warranty period
+- Refurbished quality varies by source and inspection process
+
+SEASONAL AVAILABILITY AND PRICING:
+
+Back-to-School Season (July-September):
+- Student discounts widely available
+- Education bundles with software
+- Increased demand, potential stock shortages
+- Extended return periods for educational customers
+
+Holiday Season (November-January):
+- Black Friday and Cyber Monday deals
+- Gift packaging and extended return policies
+- Higher shipping volumes, potential delays
+- Limited edition colors and configurations
+
+Spring Refresh (March-May):
+- New product announcements and releases
+- Previous generation discounts
+- Tax season purchases with refunds
+- Graduation gift shopping increases
+
+TECHNICAL SPECIFICATIONS EXPLANATION:
+
+Processor Performance:
+- Cores: More cores better for multitasking
+- Clock Speed: Higher GHz better for single-threaded tasks
+- Architecture: Newer generations more efficient
+- Integrated Graphics: Adequate for basic tasks
+
+Memory (RAM):
+- 8GB: Minimum for modern computing
+- 16GB: Recommended for professional use
+- 32GB+: For intensive creative or development work
+- Unified vs Traditional: Apple's unified memory more efficient
+
+Storage Types:
+- SSD: Faster, more reliable, no moving parts
+- HDD: Cheaper per GB, larger capacities available
+- NVMe: Fastest SSD interface, best performance
+- Capacity: 256GB minimum, 512GB+ recommended
+
+Display Technologies:
+- LCD: Most common, good color accuracy
+- OLED: Perfect blacks, high contrast
+- Mini-LED: Bright, good HDR performance
+- Refresh Rate: 60Hz standard, 120Hz+ for gaming
+
+COMPATIBILITY AND INTEGRATION:
+
+Apple Ecosystem:
+- Handoff: Start work on one device, finish on another
+- Universal Clipboard: Copy on one device, paste on another
+- AirDrop: Wireless file sharing between Apple devices
+- iCloud Integration: Seamless sync across devices
+
+Windows Integration:
+- Microsoft 365: Native integration with Windows
+- OneDrive: Cloud storage and sync
+- Windows Hello: Biometric authentication
+- Xbox Game Pass: Gaming service integration
+
+Cross-Platform Solutions:
+- Google Workspace: Works across all platforms
+- Adobe Creative Suite: Professional cross-platform tools
+- Zoom/Teams: Video conferencing compatibility
+- Dropbox: Universal file sync and sharing
+
+UPGRADE AND CUSTOMIZATION OPTIONS:
+
+User-Upgradeable Components:
+- RAM: Most business laptops allow upgrades
+- Storage: Many laptops support additional SSD
+- Limited Options: MacBooks and ultrabooks often sealed
+
+Professional Upgrade Services:
+- Memory upgrades: $50-200 depending on capacity
+- SSD upgrades: $100-500 depending on size
+- Data migration: $50 service charge
+- Warranty considerations: May void manufacturer warranty
+
+Software Customization:
+- Operating System: Windows, macOS, Linux options
+- Productivity Software: Microsoft Office, Adobe Creative
+- Security Software: Antivirus, VPN, encryption
+- Specialized Software: Industry-specific applications
+
+SUPPORT AND SERVICE OPTIONS:
+
+Manufacturer Support:
+- Apple: Genius Bar, authorized service providers
+- Dell: ProSupport, on-site service options
+- HP: Care Pack services, next-business-day replacement
+- Lenovo: Premier Support, depot and on-site options
+
+Extended Warranty Options:
+- AppleCare+: 2-3 years, accidental damage coverage
+- Dell ProSupport Plus: Proactive monitoring, SSD retention
+- HP Care Pack: Various service levels, parts coverage
+- Third-party: SquareTrade, Asurion extended protection
+
+Training and Setup Services:
+- Data transfer: From old device to new device
+- Software installation: Operating system and applications
+- Personalization: Email setup, preferences configuration
+- Training: One-on-one or group training sessions
+
+ENVIRONMENTAL AND SUSTAINABILITY:
+
+Recycling Programs:
+- Manufacturer take-back programs
+- Trade-in credits towards new purchases
+- Certified data destruction services
+- Environmental impact reporting
+
+Energy Efficiency:
+- ENERGY STAR certification ratings
+- Battery life optimization features
+- Power management settings
+- Renewable energy manufacturing claims
+
+Packaging and Materials:
+- Recyclable packaging materials
+- Reduced plastic usage initiatives
+- Conflict-free mineral sourcing
+- Carbon neutral shipping options
+
+COMMON CUSTOMER QUESTIONS AND RESPONSES:
+
+"Which laptop is best for me?"
+- Assess primary use cases: productivity, gaming, creative work
+- Consider portability vs performance requirements
+- Budget constraints and value considerations
+- Future needs and upgrade potential
+
+"Why is this laptop more expensive than others?"
+- Build quality and materials differences
+- Warranty and support service levels
+- Brand reputation and resale value
+- Included software and service packages
+
+"How long will this laptop last?"
+- Typical lifespan: 3-5 years for business use
+- Performance degradation factors over time
+- Software support lifecycle considerations
+- Physical durability and build quality impact
+
+"Can I return/exchange if it doesn't meet my needs?"
+- Return policy timeframes by product category
+- Condition requirements for returns
+- Restocking fees for certain products
+- Exchange options and price differences
+
+This product knowledge database is updated quarterly to reflect
+new products, discontinued models, and changing specifications.
+Customer service representatives should verify current pricing
+and availability in real-time systems during customer interactions.

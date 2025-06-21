@@ -1,0 +1,256 @@
+sequenceDiagram
+    participant User
+    participant UI as User Interface
+    participant Agent as CustomerServiceAgent
+    participant Config as Configuration
+    participant Decomposer as QueryDecomposer
+    participant React as ReActAgentWorker
+    participant Tools as CustomerServiceTools
+    participant AsyncTools as AsyncCustomerServiceTools
+    participant Cache as CacheManager
+    participant DB as DatabaseManager
+    participant Pool as ConnectionPool
+    participant MySQL as MySQL Database
+    participant LLM as Local LLM
+    participant Vector as VectorStoreIndex
+    participant Tracker as ToolUsageTracker
+    participant Monitor as PerformanceMonitor
+
+    Note over User, Monitor: 🚀 System Initialization Phase
+    User->>UI: Start Application
+    UI->>Agent: initialize()
+    Agent->>Config: Load .env configuration
+    Config-->>Agent: Configuration loaded
+
+    Agent->>DB: setup_database()
+    DB->>Pool: Create connection pool
+    Pool->>MySQL: Establish connections
+    MySQL-->>Pool: Connections ready
+    Pool-->>DB: Pool created
+    DB-->>Agent: Database ready
+
+    Agent->>LLM: setup_llm()
+    LLM-->>Agent: LLM configured
+
+    Agent->>Vector: setup_support_documents()
+    Vector-->>Agent: Knowledge base ready
+
+    Agent->>Tools: create_tools()
+    Tools-->>Agent: 17 tools created
+
+    Agent->>React: create_agent()
+    React-->>Agent: Agent ready
+
+    Agent-->>UI: System initialized
+    UI-->>User: Ready for queries
+
+    Note over User, Monitor: 📝 Simple Query Flow (Basic Scenario)
+    User->>UI: "What is the return policy for order 1001?"
+    UI->>Agent: run_query(query)
+    Agent->>Decomposer: assess_query_complexity(query)
+    Decomposer-->>Agent: Simple query (score: 1)
+
+    Agent->>React: query(order_return_policy)
+    React->>Tools: get_order_return_policy(1001)
+
+    activate Tools
+    Tools->>Tracker: record_tool_call_start()
+    Tools->>Cache: check_cache("get_order_items_1001")
+    Cache-->>Tools: Cache miss
+
+    Tools->>DB: get_order_items(1001)
+    DB->>Pool: get_connection()
+    Pool->>MySQL: SELECT items FROM orders WHERE id=1001
+    MySQL-->>Pool: [Laptop, Mouse]
+    Pool-->>DB: Results
+    DB-->>Tools: [Laptop, Mouse]
+
+    Tools->>Cache: store_cache("get_order_items_1001", result)
+    Tools->>Tracker: record_tool_call_end(success=true, time=0.15s)
+    Tools-->>React: "Laptop: 30 days, Mouse: 45 days"
+    deactivate Tools
+
+    React-->>Agent: Formatted response
+    Agent->>Monitor: log_performance(query_time=0.8s)
+    Agent-->>UI: Response with return policies
+    UI-->>User: "Order 1001 return policy: Laptop: 30 days, Mouse: 45 days"
+
+    Note over User, Monitor: 🧩 Complex Query Flow (Expert Scenario)
+    User->>UI: "Analyze orders 1007, 1017, 1023 for warranty issues and recommend solutions"
+    UI->>Agent: run_query_with_options(complex_query)
+    Agent->>Decomposer: assess_query_complexity(query)
+    Decomposer-->>Agent: Complex query (score: 4, requires_decomposition: true)
+
+    Agent->>Decomposer: decompose_query(query)
+    Decomposer->>LLM: Generate subgoals
+    LLM-->>Decomposer: [Get order details, Analyze warranty, Generate recommendations]
+    Decomposer-->>Agent: 3 subgoals identified
+
+    loop For each subgoal
+        Agent->>React: execute_subgoal()
+
+        Note over React, AsyncTools: Subgoal 1: Get Multiple Order Details
+        React->>AsyncTools: get_multiple_orders_parallel([1007,1017,1023])
+
+        activate AsyncTools
+        AsyncTools->>Tools: Create parallel tasks
+
+        par Order 1007
+            Tools->>Cache: check_cache("order_details_1007")
+            Cache-->>Tools: Cache hit
+            Tools->>Tracker: record_cache_hit()
+        and Order 1017
+            Tools->>Cache: check_cache("order_details_1017")
+            Cache-->>Tools: Cache miss
+            Tools->>DB: get_order_details(1017)
+            DB->>Pool: get_connection()
+            Pool->>MySQL: SELECT * FROM orders WHERE id=1017
+            MySQL-->>Pool: Order data
+            Pool-->>DB: Results
+            DB-->>Tools: Order details
+            Tools->>Cache: store_cache()
+        and Order 1023
+            Tools->>Cache: check_cache("order_details_1023")
+            Cache-->>Tools: Cache miss
+            Tools->>DB: get_order_details(1023)
+            DB->>Pool: get_connection()
+            Pool->>MySQL: SELECT * FROM orders WHERE id=1023
+            MySQL-->>Pool: Order data
+            Pool-->>DB: Results
+            DB-->>Tools: Order details
+            Tools->>Cache: store_cache()
+        end
+
+        AsyncTools->>Tracker: record_parallel_execution(tools=3, time=0.4s)
+        AsyncTools-->>React: Combined order data
+        deactivate AsyncTools
+
+        Note over React, Vector: Subgoal 2: Warranty Analysis
+        React->>Tools: analyze_warranty_coverage()
+        Tools->>Vector: search_warranty_policies()
+        Vector-->>Tools: Warranty terms
+        Tools->>Tracker: record_tool_call()
+        Tools-->>React: Warranty analysis
+
+        Note over React, LLM: Subgoal 3: Generate Recommendations
+        React->>LLM: synthesize_recommendations(order_data, warranty_info)
+        LLM-->>React: Detailed recommendations
+    end
+
+    Agent->>Decomposer: synthesize_results(subgoal_results)
+    Decomposer-->>Agent: Comprehensive response
+    Agent->>Monitor: log_complex_query(subgoals=3, total_time=2.1s)
+    Agent-->>UI: Detailed analysis with recommendations
+    UI-->>User: Complete warranty analysis and solutions
+
+    Note over User, Monitor: 💾 Cache Demonstration Flow
+    User->>UI: "demo cache" command
+    UI->>Agent: demonstrate_cache_behavior()
+
+    loop 3 times (Cache Demo)
+        Agent->>Tools: get_order_details(1001)
+
+        alt First call
+            Tools->>Cache: check_cache("order_details_1001")
+            Cache-->>Tools: Cache miss
+            Tools->>DB: execute_query()
+            DB->>MySQL: Database query
+            MySQL-->>DB: Results
+            DB-->>Tools: Order data
+            Tools->>Cache: store_cache(ttl=300s)
+            Tools->>Tracker: record_db_call(time=0.12s)
+        else Subsequent calls
+            Tools->>Cache: check_cache("order_details_1001")
+            Cache-->>Tools: Cache hit
+            Tools->>Tracker: record_cache_hit(time=0.001s)
+        end
+
+        Tools-->>Agent: Order details
+    end
+
+    Agent->>Cache: get_detailed_stats()
+    Cache-->>Agent: Hit rate: 66.7%
+    Agent-->>UI: Cache performance demonstration
+    UI-->>User: "Cache demo: First call 0.12s, subsequent calls 0.001s"
+
+    Note over User, Monitor: 📊 Performance Monitoring Flow
+    User->>UI: Request performance metrics
+    UI->>Agent: show_performance_metrics()
+
+    Agent->>Monitor: get_system_metrics()
+    Monitor-->>Agent: CPU, Memory, Threads
+
+    Agent->>Tracker: get_comprehensive_report()
+    Tracker-->>Agent: Tool usage statistics
+
+    Agent->>Cache: get_detailed_stats()
+    Cache-->>Agent: Cache performance
+
+    Agent->>DB: get_query_stats()
+    DB-->>Agent: Database performance
+
+    Agent-->>UI: Consolidated metrics
+    UI-->>User: Performance dashboard
+
+    Note over User, Monitor: ⚠️ Error Handling Flow
+    User->>UI: "Invalid query with bad order ID 99999"
+    UI->>Agent: run_query(invalid_query)
+    Agent->>React: process_query()
+    React->>Tools: get_order_details(99999)
+
+    Tools->>DB: execute_query(99999)
+    DB->>Pool: get_connection()
+    Pool->>MySQL: SELECT * WHERE id=99999
+    MySQL-->>Pool: Empty result
+    Pool-->>DB: No data
+    DB-->>Tools: Empty result
+
+    Tools->>Tracker: record_tool_call(success=false, error="Order not found")
+    Tools-->>React: {"error": "Order 99999 not found"}
+    React-->>Agent: Error response
+    Agent->>Monitor: log_error(query_failed=true)
+    Agent-->>UI: "Order 99999 not found"
+    UI-->>User: Error message with suggestions
+
+    Note over User, Monitor: 🔄 Health Check Flow
+    User->>UI: Request health check
+    UI->>Agent: health_check()
+
+    par Database Health
+        Agent->>DB: test_connection()
+        DB->>MySQL: SELECT 1
+        MySQL-->>DB: 1
+        DB-->>Agent: healthy
+    and LLM Health
+        Agent->>LLM: test_query()
+        LLM-->>Agent: healthy
+    and Cache Health
+        Agent->>Cache: get_status()
+        Cache-->>Agent: operational
+    and Memory Health
+        Agent->>Monitor: check_memory()
+        Monitor-->>Agent: within_limits
+    end
+
+    Agent-->>UI: System health report
+    UI-->>User: "All systems operational"
+
+    Note over User, Monitor: 🚪 System Shutdown
+    User->>UI: Exit application
+    UI->>Agent: cleanup()
+
+    Agent->>AsyncTools: close()
+    AsyncTools-->>Agent: Async resources closed
+
+    Agent->>DB: disconnect()
+    DB->>Pool: close_all_connections()
+    Pool->>MySQL: Close connections
+    MySQL-->>Pool: Connections closed
+    Pool-->>DB: Pool closed
+    DB-->>Agent: Database disconnected
+
+    Agent->>Tracker: export_final_stats()
+    Tracker-->>Agent: Session stats saved
+
+    Agent-->>UI: Cleanup complete
+    UI-->>User: "Goodbye!"

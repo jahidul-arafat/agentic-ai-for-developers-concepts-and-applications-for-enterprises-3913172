@@ -1,0 +1,291 @@
+graph TB
+%% User Interface Layer
+    subgraph "🖥️ User Interface Layer"
+        UI[Main Menu Interface]
+        CLI[Command Line Interface]
+        SCENARIOS[Predefined Scenarios]
+        CUSTOM[Custom Query Interface]
+    end
+
+%% Configuration Management
+    subgraph "⚙️ Configuration Management"
+        ENV[.env File]
+        CONFIG[Config DataClass]
+        LOGGER[Logging System]
+        PERF_MON[Performance Monitor]
+    end
+
+%% Core Agent Layer
+    subgraph "🤖 Core Agent Architecture"
+        AGENT[CustomerServiceAgent]
+        REACT[ReActAgentWorker]
+        RUNNER[AgentRunner]
+        DECOMPOSER[QueryDecomposer]
+
+        AGENT --> REACT
+        REACT --> RUNNER
+        AGENT --> DECOMPOSER
+    end
+
+%% LLM Infrastructure
+    subgraph "🧠 LLM Infrastructure"
+        LLM[OpenAI-Like LLM]
+        EMBEDDINGS[HuggingFace Embeddings]
+        SETTINGS[LlamaIndex Settings]
+
+        LLM --> SETTINGS
+        EMBEDDINGS --> SETTINGS
+    end
+
+%% Hardware Optimization
+    subgraph "🚀 Hardware Optimization"
+        CPU[CPU Processing]
+        MPS[Mac GPU - Metal]
+        CUDA[CUDA GPU]
+        DEVICE_AUTO[Auto Device Detection]
+
+        DEVICE_AUTO --> CPU
+        DEVICE_AUTO --> MPS
+        DEVICE_AUTO --> CUDA
+    end
+
+%% Vector Store & Knowledge Base
+    subgraph "📚 Knowledge Management"
+        DOCS[Support Documents]
+        READER[SimpleDirectoryReader]
+        SPLITTER[SentenceSplitter]
+        VECTOR_INDEX[VectorStoreIndex]
+        QUERY_ENGINE[Query Engine]
+
+        DOCS --> READER
+        READER --> SPLITTER
+        SPLITTER --> VECTOR_INDEX
+        VECTOR_INDEX --> QUERY_ENGINE
+    end
+
+%% Database Layer
+    subgraph "🗄️ Database Architecture"
+        MYSQL[MySQL Database]
+        POOL[Connection Pool]
+        SINGLE_CONN[Single Connection]
+        DB_MANAGER[DatabaseManager]
+        CIRCUIT_BREAKER[Circuit Breaker]
+
+        DB_MANAGER --> POOL
+        DB_MANAGER --> SINGLE_CONN
+        DB_MANAGER --> CIRCUIT_BREAKER
+        POOL --> MYSQL
+        SINGLE_CONN --> MYSQL
+    end
+
+%% Tool Architecture
+    subgraph "🛠️ Tool Architecture"
+        SYNC_TOOLS[CustomerServiceTools]
+        ASYNC_TOOLS[AsyncCustomerServiceTools]
+        TOOL_TRACKER[ToolUsageTracker]
+
+        subgraph "📊 Basic Tools"
+            ORDER_ITEMS[get_order_items]
+            DELIVERY_DATE[get_delivery_date]
+            RETURN_POLICY[get_item_return_days]
+            ORDER_DETAILS[get_order_details]
+            SEARCH_ORDERS[search_orders_by_customer]
+            ORDER_RETURN[get_order_return_policy]
+        end
+
+        subgraph "🚀 Advanced Analytics Tools"
+            COMPREHENSIVE[analyze_customer_orders_comprehensive]
+            RETURN_CALC[calculate_return_policy_and_deadlines]
+            GEO_ANALYSIS[analyze_geographic_performance]
+            PREDICTIVE[generate_predictive_risk_analysis]
+            STATUS_ANALYSIS[analyze_orders_by_status_and_timeframe]
+            PRODUCT_PERF[analyze_product_performance_and_issues]
+            MULTI_ORDER[get_multiple_orders_parallel]
+        end
+
+        subgraph "📚 Knowledge Tools"
+            SUPPORT_SEARCH[support_policy_search]
+        end
+    end
+
+%% Caching System
+    subgraph "💾 Caching Architecture"
+        CACHE_MANAGER[CacheManager]
+        METHOD_CACHE[Method-Specific Caches]
+        CACHE_STATS[Cache Statistics]
+        TTL[TTL Management]
+
+        CACHE_MANAGER --> METHOD_CACHE
+        CACHE_MANAGER --> CACHE_STATS
+        CACHE_MANAGER --> TTL
+    end
+
+%% Performance Monitoring
+    subgraph "📈 Performance Monitoring"
+        MEMORY_MON[Memory Monitor]
+        QUERY_STATS[Query Statistics]
+        TOOL_USAGE[Tool Usage Analytics]
+        HEALTH_CHECK[Health Check System]
+        METRICS[Performance Metrics]
+
+        MEMORY_MON --> METRICS
+        QUERY_STATS --> METRICS
+        TOOL_USAGE --> METRICS
+        HEALTH_CHECK --> METRICS
+    end
+
+%% Async Processing
+    subgraph "⚡ Async Processing"
+        EXECUTOR[ThreadPoolExecutor]
+        SEMAPHORE[Async Semaphore]
+        PARALLEL_OPS[Parallel Operations]
+
+        EXECUTOR --> PARALLEL_OPS
+        SEMAPHORE --> PARALLEL_OPS
+    end
+
+%% Data Processing Pipeline
+    subgraph "🔄 Data Processing Pipeline"
+        INPUT_VALIDATION[Input Validation]
+        QUERY_PARSING[Query Parsing]
+        TOOL_SELECTION[Tool Selection]
+        RESULT_SYNTHESIS[Result Synthesis]
+        ERROR_HANDLING[Error Handling]
+
+        INPUT_VALIDATION --> QUERY_PARSING
+        QUERY_PARSING --> TOOL_SELECTION
+        TOOL_SELECTION --> RESULT_SYNTHESIS
+        ERROR_HANDLING --> RESULT_SYNTHESIS
+    end
+
+%% Storage & File Management
+    subgraph "📁 Storage Management"
+        POLICY_FILES[Policy Files Directory]
+        CACHE_DIRS[Cache Directories]
+        LOG_FILES[Log Files]
+        HF_CACHE[HuggingFace Cache]
+        ST_CACHE[SentenceTransformers Cache]
+
+        CACHE_DIRS --> HF_CACHE
+        CACHE_DIRS --> ST_CACHE
+    end
+
+%% Query Complexity Analysis
+    subgraph "🧩 Query Intelligence"
+        COMPLEXITY_ASSESS[Complexity Assessment]
+        PATTERN_DETECT[Pattern Detection]
+        SUBGOAL_GEN[Subgoal Generation]
+        SEQUENTIAL_EXEC[Sequential Execution]
+
+        COMPLEXITY_ASSESS --> PATTERN_DETECT
+        PATTERN_DETECT --> SUBGOAL_GEN
+        SUBGOAL_GEN --> SEQUENTIAL_EXEC
+    end
+
+%% Connections - User to Core
+    UI --> AGENT
+    CLI --> AGENT
+    SCENARIOS --> AGENT
+    CUSTOM --> AGENT
+
+%% Configuration Connections
+    ENV --> CONFIG
+    CONFIG --> LOGGER
+    CONFIG --> AGENT
+    CONFIG --> DB_MANAGER
+    CONFIG --> LLM
+    CONFIG --> EMBEDDINGS
+
+%% Agent to Infrastructure
+    AGENT --> LLM
+    AGENT --> VECTOR_INDEX
+    AGENT --> DB_MANAGER
+    AGENT --> SYNC_TOOLS
+    AGENT --> ASYNC_TOOLS
+
+%% Tool Connections
+    SYNC_TOOLS --> DB_MANAGER
+    ASYNC_TOOLS --> SYNC_TOOLS
+    SYNC_TOOLS --> CACHE_MANAGER
+    SYNC_TOOLS --> TOOL_TRACKER
+
+%% Database Connections
+    SYNC_TOOLS --> ORDER_ITEMS
+    SYNC_TOOLS --> DELIVERY_DATE
+    SYNC_TOOLS --> RETURN_POLICY
+    SYNC_TOOLS --> ORDER_DETAILS
+    SYNC_TOOLS --> SEARCH_ORDERS
+    SYNC_TOOLS --> COMPREHENSIVE
+    SYNC_TOOLS --> RETURN_CALC
+    SYNC_TOOLS --> GEO_ANALYSIS
+    SYNC_TOOLS --> PREDICTIVE
+    SYNC_TOOLS --> STATUS_ANALYSIS
+    SYNC_TOOLS --> PRODUCT_PERF
+
+%% Async Processing Connections
+    ASYNC_TOOLS --> EXECUTOR
+    ASYNC_TOOLS --> SEMAPHORE
+    ASYNC_TOOLS --> MULTI_ORDER
+
+%% Knowledge Base Connections
+    POLICY_FILES --> DOCS
+    QUERY_ENGINE --> SUPPORT_SEARCH
+
+%% Hardware Optimization Connections
+    EMBEDDINGS --> DEVICE_AUTO
+    LLM --> DEVICE_AUTO
+
+%% Monitoring Connections
+    DB_MANAGER --> QUERY_STATS
+    SYNC_TOOLS --> TOOL_USAGE
+    AGENT --> MEMORY_MON
+    AGENT --> HEALTH_CHECK
+
+%% Query Processing Flow
+    DECOMPOSER --> COMPLEXITY_ASSESS
+    DECOMPOSER --> SEQUENTIAL_EXEC
+    AGENT --> INPUT_VALIDATION
+    INPUT_VALIDATION --> TOOL_SELECTION
+    TOOL_SELECTION --> SYNC_TOOLS
+    TOOL_SELECTION --> ASYNC_TOOLS
+
+%% Cache Integration
+    ORDER_DETAILS -.-> CACHE_MANAGER
+    ORDER_ITEMS -.-> CACHE_MANAGER
+    COMPREHENSIVE -.-> CACHE_MANAGER
+
+%% Performance Integration
+    TOOL_TRACKER --> PERFORMANCE_MON
+    CACHE_MANAGER --> PERFORMANCE_MON
+    DB_MANAGER --> PERFORMANCE_MON
+
+%% Storage Connections
+    CONFIG --> CACHE_DIRS
+    LOGGER --> LOG_FILES
+    EMBEDDINGS --> HF_CACHE
+    EMBEDDINGS --> ST_CACHE
+
+%% Circuit Breaker Integration
+    CIRCUIT_BREAKER -.-> ERROR_HANDLING
+
+%% Error Handling Integration
+    SYNC_TOOLS -.-> ERROR_HANDLING
+    ASYNC_TOOLS -.-> ERROR_HANDLING
+    DB_MANAGER -.-> ERROR_HANDLING
+
+%% Styling
+    classDef userLayer fill:#e1f5fe
+    classDef coreAgent fill:#f3e5f5
+    classDef infrastructure fill:#e8f5e8
+    classDef database fill:#fff3e0
+    classDef tools fill:#fce4ec
+    classDef performance fill:#f1f8e9
+    classDef async fill:#e0f2f1
+
+    class UI,CLI,SCENARIOS,CUSTOM userLayer
+    class AGENT,REACT,RUNNER,DECOMPOSER coreAgent
+    class LLM,EMBEDDINGS,VECTOR_INDEX,MYSQL infrastructure
+    class DB_MANAGER,POOL,CIRCUIT_BREAKER database
+    class SYNC_TOOLS,ASYNC_TOOLS,ORDER_ITEMS,DELIVERY_DATE,RETURN_POLICY,ORDER_DETAILS tools
+    class CACHE_MANAGER,TOOL_TRACKER,MEMORY_MON,METRICS performance
+    class EXECUTOR,SEMAPHORE,PARALLEL_OPS async

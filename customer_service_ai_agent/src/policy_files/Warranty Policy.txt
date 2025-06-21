@@ -1,0 +1,221 @@
+Comprehensive Warranty Policy
+
+LAPTOP WARRANTY COVERAGE:
+
+MacBook Pro Models:
+- Standard Warranty: 1 year from purchase date
+- Extended Warranty: Available up to 3 years
+- Coverage: Manufacturing defects, hardware failures
+- AppleCare+ Integration: Full Apple warranty honored
+
+Screen Issues:
+- Dead pixels (5+ pixels): Covered under warranty
+- Screen flickering: Hardware defect - covered
+- Cracked screens: NOT covered unless manufacturing defect
+- Backlight issues: Covered for 18 months from purchase
+
+Battery Issues:
+- Battery capacity below 80% within 1 year: Covered
+- Rapid discharge (holds charge <4 hours): Covered
+- Battery swelling: Immediate replacement covered
+- Normal battery degradation: NOT covered after 1 year
+
+Keyboard Issues:
+- Sticky or non-responsive keys: Covered for 2 years
+- Butterfly keyboard known issues: Extended coverage to 4 years
+- Liquid damage: NOT covered unless sealed unit failure
+- Key cap replacement: Covered for mechanical failure
+
+Processing and Motherboard:
+- CPU/GPU failures: Full coverage for 1 year
+- RAM failures: Covered if soldered (not user upgradeable)
+- Logic board issues: Complete replacement covered
+- Thermal issues: Covered if not due to user modifications
+
+WARRANTY DETERMINATION PROCESS:
+
+Step 1: Purchase Date Verification
+- Check order date in system
+- Warranty starts from delivery date, not order date
+- Grace period: 7 days if delivery date unavailable
+
+Step 2: Issue Classification
+- Hardware defect: Covered under standard warranty
+- Software issue: 90 days complimentary support
+- User damage: Not covered, repair quote provided
+- Known issues: Check extended coverage database
+
+Step 3: Warranty Status Check
+- Active warranty: Full coverage for eligible issues
+- Expired warranty: Out-of-warranty repair pricing
+- Extended warranty: Check specific terms and coverage
+
+RESOLUTION OPTIONS:
+
+Within Warranty:
+- Free repair: Standard resolution for covered issues
+- Free replacement: If repair not feasible or cost-effective
+- Expedited service: Available for business customers
+- Loaner device: Available for repairs >5 business days
+
+Out of Warranty:
+- Repair quote: Provided within 24 hours
+- Trade-in credit: Towards new device purchase
+- Refurbished replacement: Cost-effective alternative
+- DIY repair: Parts and instructions available
+
+ESCALATION FOR WARRANTY DISPUTES:
+
+Level 1: Customer Service Representative
+- Basic warranty lookup and standard resolutions
+- Can approve goodwill repairs up to $200
+
+Level 2: Technical Specialist
+- Complex warranty determinations
+- Can approve goodwill repairs up to $500
+- Coordinates with manufacturer warranty teams
+
+Level 3: Warranty Manager
+- Final warranty decisions
+- Goodwill approvals above $500
+- Policy exception authority
+
+SPECIAL WARRANTY PROGRAMS:
+
+Known Issue Extensions:
+- MacBook Pro 2016-2019 keyboard: 4 years
+- MacBook Pro 2016-2017 GPU: 4 years
+- MacBook Pro 2016-2020 display backlight: 3 years
+
+Business Customer Benefits:
+- Extended warranty terms available
+- Expedited warranty processing
+- On-site service for qualifying purchases
+- Dedicated warranty support line
+
+Educational Institution Benefits:
+- Extended warranty for student devices
+- Bulk warranty processing
+- Academic year alignment options
+
+MANUFACTURER COORDINATION:
+
+Apple Warranty Claims:
+- Direct coordination with Apple support
+- Authorized service provider network
+- Apple Store appointments can be arranged
+- Preserve customer relationship during manufacturer service
+
+Third-Party Manufacturer Claims:
+- Direct manufacturer contact required
+- We facilitate communication and follow-up
+- Expedited processing for our customers
+- Alternative solutions if manufacturer delays
+
+WARRANTY FRAUD PREVENTION:
+
+Red Flags:
+- Multiple warranty claims from same customer
+- Damage patterns inconsistent with normal use
+- Modified or tampered device serial numbers
+- Claims shortly before warranty expiration
+
+Verification Steps:
+- Photo documentation required
+- Serial number verification
+- Purchase history review
+- Technical assessment when needed
+
+GOODWILL POLICY:
+
+Factors for Consideration:
+- Customer loyalty and purchase history
+- Issue severity and customer impact
+- Time since warranty expiration (within 90 days preferred)
+- Social media or review site mentions
+
+Approval Thresholds:
+- Customer Service: Up to $200 goodwill repair
+- Manager: Up to $500 goodwill repair
+- Regional Manager: Above $500 requires approval
+- VP Customer Experience: Final authority on large claims
+
+Documentation Requirements:
+- Customer complaint details
+- Warranty status and coverage
+- Proposed resolution and cost
+- Business justification for goodwill
+
+WARRANTY COMMUNICATION SCRIPTS:
+
+Covered Issues:
+"Good news! Your [device] is still under warranty. This [issue] is covered under our standard warranty terms. We'll arrange for [repair/replacement] at no cost to you."
+
+Expired Warranty:
+"I see your warranty expired on [date]. While this issue isn't covered under warranty, I can provide you with repair options and pricing. Let me also check if you're eligible for any current promotions."
+
+Disputed Coverage:
+"I understand your concern about this issue. Let me escalate this to our warranty specialist who can review the specific circumstances and determine if we can provide any additional assistance."
+
+PERFORMANCE METRICS:
+
+Warranty Resolution Targets:
+- Initial response: Within 4 hours
+- Warranty determination: Within 24 hours
+- Repair authorization: Within 48 hours
+- Service completion: 5-7 business days
+
+Customer Satisfaction Goals:
+- Warranty claim satisfaction: >90%
+- First-call resolution: >75%
+- Escalation rate: <15%
+- Goodwill approval rate: 15-20% of expired warranties
+
+PRODUCT-SPECIFIC WARRANTY NOTES:
+
+MacBook Pro 13" (M1/M2):
+- Known issue: Display connector (covered to 18 months)
+- Battery: Enhanced coverage for rapid drain issues
+- Keyboard: Standard coverage, fewer issues than Intel models
+
+MacBook Pro 14"/16" (M1 Pro/Max):
+- Generally reliable, standard warranty applies
+- Display: Mini-LED coverage for blooming issues
+- Charging: MagSafe connector covered for 2 years
+
+MacBook Air Models:
+- Standard 1-year coverage
+- Fewer known issues, straightforward warranty process
+- Student models: Extended support available
+
+Gaming Laptops:
+- Enhanced thermal coverage due to high-performance use
+- GPU coverage extended to 18 months
+- User modifications void warranty (clearly communicated)
+
+Business Laptops:
+- Enhanced warranty options available
+- Priority processing for business customers
+- Volume purchase warranty benefits
+
+INTERNATIONAL WARRANTY:
+
+Coverage Areas:
+- US and Canada: Full warranty honored
+- International travel: Limited coverage with proof of purchase
+- Study abroad: Special arrangements for student customers
+
+Limitations:
+- Repair facility availability varies by region
+- Shipping costs for international returns
+- Local regulations may affect warranty terms
+
+Contact Information:
+- Warranty Hotline: 1-800-WARRANTY
+- Email: warranty@company.com
+- Business Warranty: 1-800-BIZ-WARRANTY
+- International: +1-XXX-XXX-XXXX
+
+This warranty policy is comprehensive and covers all major scenarios
+our customer service team encounters. Regular updates ensure alignment
+with manufacturer changes and emerging issues.

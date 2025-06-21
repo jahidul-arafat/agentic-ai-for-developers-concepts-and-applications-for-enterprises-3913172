@@ -140,6 +140,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+customer_service_env/
 
 # Spyder project settings
 .spyderproject
