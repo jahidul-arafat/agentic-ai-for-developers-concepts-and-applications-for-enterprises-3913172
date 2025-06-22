@@ -1,256 +1,1145 @@
 sequenceDiagram
-    participant User
-    participant UI as User Interface
-    participant Agent as CustomerServiceAgent
-    participant Config as Configuration
-    participant Decomposer as QueryDecomposer
-    participant React as ReActAgentWorker
-    participant Tools as CustomerServiceTools
-    participant AsyncTools as AsyncCustomerServiceTools
-    participant Cache as CacheManager
-    participant DB as DatabaseManager
-    participant Pool as ConnectionPool
-    participant MySQL as MySQL Database
-    participant LLM as Local LLM
-    participant Vector as VectorStoreIndex
-    participant Tracker as ToolUsageTracker
-    participant Monitor as PerformanceMonitor
+    participant U as User Interface
+    participant MM as Main Menu Controller
+    participant CA as CustomerServiceAgent
+    participant CFG as Config Manager
+    participant LOG as Logger System
+    participant ET as ExecutionTracker
+    participant QD as QueryDecomposer
+    participant RW as ReActWorker
+    participant AR as AgentRunner
+    participant TS as ToolSelector
+    participant CST as CustomerServiceTools
+    participant TCT as TrackedCustomerServiceTools
+    participant ETCT as EnhancedTrackedTools
+    participant CM as CacheManager
+    participant TUT as ToolUsageTracker
+    participant DBM as DatabaseManager
+    participant CP as ConnectionPool
+    participant CB as CircuitBreaker
+    participant LLM as LocalLLM/OpenAILike
+    participant EMB as EmbeddingModel
+    participant VI as VectorStoreIndex
+    participant QE as QueryEngine
+    participant AT as AsyncTools
+    participant TEX as ThreadPoolExecutor
+    participant SEM as AsyncSemaphore
+    participant PM as PerformanceMonitor
+    participant GC as GarbageCollector
+    participant FS as FileSystem
+    participant WB as WebBrowser
 
-    Note over User, Monitor: 🚀 System Initialization Phase
-    User->>UI: Start Application
-    UI->>Agent: initialize()
-    Agent->>Config: Load .env configuration
-    Config-->>Agent: Configuration loaded
+    Note over U,WB: 🚀 SYSTEM INITIALIZATION PHASE (Detailed Bootstrap Process)
 
-    Agent->>DB: setup_database()
-    DB->>Pool: Create connection pool
-    Pool->>MySQL: Establish connections
-    MySQL-->>Pool: Connections ready
-    Pool-->>DB: Pool created
-    DB-->>Agent: Database ready
+    U->>MM: python customer_service_agent.py
+    MM->>MM: check_and_install_dependencies()
 
-    Agent->>LLM: setup_llm()
-    LLM-->>Agent: LLM configured
+    loop For Each Required Package
+        MM->>MM: try import package
+        alt Package Missing
+            MM->>MM: install_package(package)
+            MM->>MM: subprocess.pip.install
+        end
+    end
 
-    Agent->>Vector: setup_support_documents()
-    Vector-->>Agent: Knowledge base ready
+    MM->>CFG: load .env configuration
+    CFG->>CFG: parse environment variables
+    CFG->>CFG: validate configuration values
+    CFG->>CFG: set OS environment variables
+    CFG->>CFG: create cache directories
+    CFG-->>MM: configuration loaded
 
-    Agent->>Tools: create_tools()
-    Tools-->>Agent: 17 tools created
+    MM->>LOG: setup_logging()
+    LOG->>LOG: create file handler
+    LOG->>LOG: create console handler
+    LOG->>LOG: set log levels and formatters
+    LOG-->>MM: logging configured
 
-    Agent->>React: create_agent()
-    React-->>Agent: Agent ready
+    MM->>CA: CustomerServiceAgent()
+    CA->>DBM: DatabaseManager(host, user, password, db)
+    DBM->>CB: CircuitBreaker(failure_threshold=5, timeout=60)
+    CB-->>DBM: circuit breaker initialized
+    DBM->>DBM: initialize query statistics
+    DBM-->>CA: database manager created
 
-    Agent-->>UI: System initialized
-    UI-->>User: Ready for queries
+    CA->>ET: EnhancedQueryExecutionTracker()
+    ET->>ET: initialize node tracking system
+    ET->>ET: create execution graph structure
+    ET->>ET: setup HTML generation templates
+    ET-->>CA: execution tracker ready
 
-    Note over User, Monitor: 📝 Simple Query Flow (Basic Scenario)
-    User->>UI: "What is the return policy for order 1001?"
-    UI->>Agent: run_query(query)
-    Agent->>Decomposer: assess_query_complexity(query)
-    Decomposer-->>Agent: Simple query (score: 1)
+    CA->>CM: CacheManager()
+    CM->>CM: initialize method-specific caches
+    CM->>CM: setup global statistics tracking
+    CM->>CM: create hashable key generation system
+    CM-->>CA: cache manager ready
 
-    Agent->>React: query(order_return_policy)
-    React->>Tools: get_order_return_policy(1001)
+    CA->>TUT: ToolUsageTracker()
+    TUT->>TUT: initialize call history storage
+    TUT->>TUT: setup performance analytics
+    TUT-->>CA: tool tracker ready
 
-    activate Tools
-    Tools->>Tracker: record_tool_call_start()
-    Tools->>Cache: check_cache("get_order_items_1001")
-    Cache-->>Tools: Cache miss
+    Note over U,WB: 🔌 DATABASE CONNECTION SETUP (Connection Pooling Details)
 
-    Tools->>DB: get_order_items(1001)
-    DB->>Pool: get_connection()
-    Pool->>MySQL: SELECT items FROM orders WHERE id=1001
-    MySQL-->>Pool: [Laptop, Mouse]
-    Pool-->>DB: Results
-    DB-->>Tools: [Laptop, Mouse]
+    CA->>DBM: setup_database()
+    DBM->>DBM: create connection pool configuration
 
-    Tools->>Cache: store_cache("get_order_items_1001", result)
-    Tools->>Tracker: record_tool_call_end(success=true, time=0.15s)
-    Tools-->>React: "Laptop: 30 days, Mouse: 45 days"
-    deactivate Tools
+    DBM->>CP: MySQLConnectionPool(
+    Note right of CP: pool_name='customer_service_pool'<br/>pool_size=5<br/>pool_reset_session=True<br/>autocommit=True<br/>buffered=True<br/>charset='utf8mb4'
+    CP->>CP: initialize 5 database connections
+    CP->>CP: test each connection
+    CP-->>DBM: connection pool ready
 
-    React-->>Agent: Formatted response
-    Agent->>Monitor: log_performance(query_time=0.8s)
-    Agent-->>UI: Response with return policies
-    UI-->>User: "Order 1001 return policy: Laptop: 30 days, Mouse: 45 days"
+    DBM->>DBM: test_query = "SELECT COUNT(*) FROM orders"
+    DBM->>CP: get_connection()
+    CP->>CP: select available connection from pool
+    CP-->>DBM: connection object
+    DBM->>DBM: execute(test_query)
+    DBM->>CP: return_connection()
+    CP->>CP: mark connection as available
+    DBM-->>CA: database setup complete
 
-    Note over User, Monitor: 🧩 Complex Query Flow (Expert Scenario)
-    User->>UI: "Analyze orders 1007, 1017, 1023 for warranty issues and recommend solutions"
-    UI->>Agent: run_query_with_options(complex_query)
-    Agent->>Decomposer: assess_query_complexity(query)
-    Decomposer-->>Agent: Complex query (score: 4, requires_decomposition: true)
+    Note over U,WB: 🤖 LLM & EMBEDDING SETUP (Hardware Optimization)
 
-    Agent->>Decomposer: decompose_query(query)
-    Decomposer->>LLM: Generate subgoals
-    LLM-->>Decomposer: [Get order details, Analyze warranty, Generate recommendations]
-    Decomposer-->>Agent: 3 subgoals identified
+    CA->>CA: setup_llm()
+    CA->>CA: _determine_embedding_device()
 
-    loop For each subgoal
-        Agent->>React: execute_subgoal()
+    alt Mac with Metal Performance Shaders
+        CA->>CA: torch.backends.mps.is_available()
+        CA->>CA: device = "mps"
+        CA->>CA: set PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+    else CUDA Available
+        CA->>CA: torch.cuda.is_available()
+        CA->>CA: device = "cuda"
+    else CPU Fallback
+        CA->>CA: device = "cpu"
+    end
 
-        Note over React, AsyncTools: Subgoal 1: Get Multiple Order Details
-        React->>AsyncTools: get_multiple_orders_parallel([1007,1017,1023])
+    CA->>LLM: OpenAILike(
+    Note right of LLM: model=config.llm_model<br/>api_base=config.llm_url<br/>temperature=config.llm_temperature<br/>max_tokens=config.llm_max_tokens<br/>timeout=config.llm_timeout<br/>max_retries=config.llm_max_retries
+    LLM->>LLM: establish connection to local LM Studio
+    LLM-->>CA: LLM connection established
 
-        activate AsyncTools
-        AsyncTools->>Tools: Create parallel tasks
+    CA->>EMB: HuggingFaceEmbedding(
+    Note right of EMB: model_name='sentence-transformers/all-MiniLM-L6-v2'<br/>max_length=512<br/>device=detected_device<br/>trust_remote_code=True
+    EMB->>EMB: download model to cache if needed
+    EMB->>EMB: load model on specified device
+    EMB-->>CA: embedding model ready
 
-        par Order 1007
-            Tools->>Cache: check_cache("order_details_1007")
-            Cache-->>Tools: Cache hit
-            Tools->>Tracker: record_cache_hit()
-        and Order 1017
-            Tools->>Cache: check_cache("order_details_1017")
-            Cache-->>Tools: Cache miss
-            Tools->>DB: get_order_details(1017)
-            DB->>Pool: get_connection()
-            Pool->>MySQL: SELECT * FROM orders WHERE id=1017
-            MySQL-->>Pool: Order data
-            Pool-->>DB: Results
-            DB-->>Tools: Order details
-            Tools->>Cache: store_cache()
-        and Order 1023
-            Tools->>Cache: check_cache("order_details_1023")
-            Cache-->>Tools: Cache miss
-            Tools->>DB: get_order_details(1023)
-            DB->>Pool: get_connection()
-            Pool->>MySQL: SELECT * FROM orders WHERE id=1023
-            MySQL-->>Pool: Order data
-            Pool-->>DB: Results
-            DB-->>Tools: Order details
-            Tools->>Cache: store_cache()
+    CA->>CA: _test_llm_connection()
+    CA->>LLM: complete("Hello")
+    LLM-->>CA: test response
+    CA-->>CA: LLM test successful
+
+    Note over U,WB: 📚 SUPPORT DOCUMENTS PROCESSING (Vector Index Creation)
+
+    CA->>CA: setup_support_documents()
+    CA->>U: get_support_files_from_user()
+
+    alt Complete Suite Selected
+        U-->>CA: 9 support documents chosen
+    else Basic Suite Selected
+        U-->>CA: 3 basic documents chosen
+    else Custom Selection
+        CA->>CA: _get_custom_file_selection()
+        U-->>CA: custom document list
+    end
+
+    CA->>CA: validate_support_files(files)
+
+    loop For Each Support File
+        CA->>CA: check file existence
+        CA->>CA: validate file extension (.txt, .pdf, .doc, etc.)
+        CA->>CA: get file size
+    end
+
+    CA->>VI: SimpleDirectoryReader(input_files=valid_files)
+    VI->>VI: load_data()
+
+    loop For Each Document
+        VI->>FS: read file content
+        FS-->>VI: document text
+        VI->>VI: create Document object
+    end
+
+    VI-->>CA: support_docs loaded
+
+    CA->>VI: SentenceSplitter(chunk_size=1024, chunk_overlap=50)
+    VI->>VI: get_nodes_from_documents(support_docs)
+
+    loop For Each Document
+        VI->>VI: split into sentences
+        VI->>VI: create overlapping chunks
+        VI->>VI: maintain metadata
+    end
+
+    VI-->>CA: text nodes created
+
+    CA->>VI: VectorStoreIndex(support_nodes)
+    VI->>EMB: embed each text chunk
+
+    loop For Each Text Chunk
+        EMB->>EMB: tokenize text
+        EMB->>EMB: generate embedding vector
+        EMB-->>VI: embedding vector
+        VI->>VI: store vector with metadata
+    end
+
+    VI-->>CA: vector index ready
+
+    Note over U,WB: 🛠️ ENHANCED TOOL CREATION (Comprehensive Tool Wrapping)
+
+    CA->>CA: create_tools()
+    CA->>CST: CustomerServiceTools(db_manager)
+    CST->>CST: initialize with database reference
+    CST-->>CA: base tools created
+
+    CA->>ETCT: EnhancedTrackedCustomerServiceTools(sync_tools, execution_tracker)
+    ETCT->>ETCT: wrap each tool method
+
+    loop For Each Tool Method
+        ETCT->>ETCT: create tracking decorator
+        ETCT->>ETCT: preserve original function signature
+        ETCT->>ETCT: add performance monitoring
+        ETCT->>ETCT: add cache integration
+        ETCT->>ETCT: add error handling
+    end
+
+    ETCT-->>CA: enhanced tools ready
+
+    CA->>AT: AsyncCustomerServiceTools(db_manager, sync_tools)
+    AT->>TEX: ThreadPoolExecutor(max_workers=4)
+    TEX-->>AT: executor ready
+    AT->>SEM: asyncio.Semaphore(10)
+    SEM-->>AT: semaphore ready
+    AT-->>CA: async tools ready
+
+    CA->>CA: create specialized function tools
+
+    Note right of CA: Creating 15+ specialized tools:<br/>• get_order_return_policy<br/>• get_multiple_orders_parallel<br/>• safe wrappers for all base tools<br/>• advanced analytics tools<br/>• geographic analysis tools<br/>• predictive risk analysis<br/>• product performance tools
+
+    loop For Each Function Tool
+        CA->>CA: create safe wrapper function
+        CA->>CA: add input validation
+        CA->>CA: add error handling
+        CA->>CA: create FunctionTool.from_defaults()
+    end
+
+    CA->>QE: support_index.as_query_engine()
+    QE-->>CA: query engine ready
+    CA->>CA: create QueryEngineTool for support search
+
+    CA-->>CA: 15 enhanced tools created
+
+    Note over U,WB: 🤖 REACT AGENT CREATION (Agent Architecture Setup)
+
+    CA->>CA: create_agent()
+    CA->>RW: ReActAgentWorker.from_tools(
+    Note right of RW: tools=enhanced_tools<br/>llm=configured_llm<br/>verbose=config.agent_verbose<br/>max_iterations=15<br/>allow_parallel_tool_calls=False
+
+    RW->>RW: initialize reasoning engine
+    RW->>RW: setup tool registry
+    RW->>RW: configure iteration limits
+    RW-->>CA: agent worker ready
+
+    alt Memory Enabled
+        CA->>CA: create ChatMemoryBuffer(token_limit=2000)
+        CA-->>CA: memory buffer created
+    else Memory Disabled
+        CA->>CA: memory = None
+    end
+
+    CA->>AR: AgentRunner(agent_worker, memory=memory, verbose=True)
+    AR->>AR: initialize agent runner
+    AR->>AR: setup conversation management
+    AR-->>CA: agent runner ready
+
+    CA->>CA: _patch_agent_for_tracking()
+    CA->>AR: patch _step method for action tracking
+    AR-->>CA: agent patched for tracking
+
+    CA->>QD: QueryDecomposer(agent_runner)
+    QD->>QD: _define_complexity_patterns()
+
+    Note right of QD: Complexity patterns:<br/>• multi_customer<br/>• multi_analysis<br/>• multi_timeframe<br/>• multi_criteria<br/>• predictive_analysis<br/>• business_impact
+
+    QD-->>CA: query decomposer ready
+
+    Note over U,WB: 💬 DETAILED QUERY PROCESSING WORKFLOW
+
+    U->>MM: select query option
+    MM->>CA: run_query(user_query)
+
+    CA->>ET: track_agent_query_start(query)
+    ET->>ET: generate unique query_id
+    ET->>ET: create root execution node
+    ET->>ET: timestamp query start
+    ET->>ET: analyze query characteristics
+    ET-->>CA: tracking initiated (query_id)
+
+    CA->>QD: assess_query_complexity(query)
+    QD->>QD: query_lower = query.lower()
+    QD->>QD: complexity_score = 0
+
+    loop For Each Pattern Type
+        QD->>QD: check for pattern keywords
+        alt Pattern Found
+            QD->>QD: complexity_score += 1
+            QD->>QD: detected_patterns.append(pattern_type)
+        end
+    end
+
+    QD->>QD: check additional indicators
+    QD->>QD: word count > 30? complexity_score += 1
+    QD->>QD: multiple questions? complexity_score += 1
+    QD->>QD: multiple requirements? complexity_score += 1
+
+    QD-->>CA: complexity_assessment{
+    Note right of QD: is_complex: boolean<br/>complexity_score: int<br/>detected_patterns: list<br/>indicators: list<br/>requires_decomposition: boolean
+
+    alt Simple Query (score < 2)
+        CA->>ET: add_thinking_process("Simple query detected")
+        CA->>CA: execute_standard_query_path()
+        Note over CA,AR: Standard Single-Pass Execution
+
+        CA->>AR: query(user_query)
+        AR->>RW: initialize conversation
+        RW->>RW: parse query into reasoning format
+
+        RW->>TS: analyze_available_tools()
+        TS->>TS: match query intent to tools
+        TS->>TS: rank tools by relevance
+        TS-->>RW: ranked_tool_list
+
+        RW->>ET: track_tool_selection_process(available_tools, query)
+        ET->>ET: create tool_selection_node
+        ET-->>RW: selection tracked
+
+        RW->>RW: generate_reasoning_step()
+        RW->>ET: add_thinking_process(reasoning)
+
+        loop Agent Iterations (max 15)
+            RW->>RW: step_iteration += 1
+            RW->>LLM: complete(reasoning_prompt)
+
+            LLM->>LLM: analyze query context
+            LLM->>LLM: reason about best approach
+            LLM->>LLM: select tool and parameters
+            LLM-->>RW: action_decision
+
+            RW->>ET: add_action_selection(available_actions, selected_action, reasoning)
+            ET->>ET: create action_node
+            ET-->>RW: action tracked
+
+            alt Tool Call Required
+                RW->>ETCT: execute_tool(tool_name, parameters)
+
+                Note over ETCT,DBM: Enhanced Tool Execution with Full Tracking
+
+                ETCT->>TUT: record_tool_call_start(tool_name, input_data)
+                ETCT->>ET: track_tool_execution_start(tool_name, parameters)
+
+                ETCT->>CM: get_cache_key(tool_name, args, kwargs)
+                CM->>CM: _make_hashable(args)
+                CM->>CM: _make_hashable(kwargs)
+                CM->>CM: generate MD5 hash
+                CM-->>ETCT: cache_key
+
+                ETCT->>CM: check_cache(cache_key)
+
+                alt Cache Hit
+                    CM->>CM: check TTL validity
+                    CM-->>ETCT: cached_result
+                    ETCT->>ET: track_cache_operation(hit=true, key=cache_key)
+                    ETCT->>TUT: record_tool_call_complete(cached_result, cache_hit=true)
+                    ETCT-->>RW: cached_result
+
+                else Cache Miss
+                    CM-->>ETCT: cache_miss
+                    ETCT->>ET: track_cache_operation(hit=false, key=cache_key)
+
+                    ETCT->>CB: call_with_circuit_breaker(tool_function)
+                    CB->>CB: check circuit state
+
+                    alt Circuit Closed
+                        CB->>CST: execute_original_tool(parameters)
+
+                        Note over CST,CP: Database Operation with Connection Pooling
+
+                        CST->>DBM: execute_query(sql, params)
+                        DBM->>PM: performance_monitor_start()
+                        DBM->>CB: call(execute_function)
+
+                        CB->>CP: get_connection()
+                        CP->>CP: select_available_connection()
+                        alt Pool Has Available Connection
+                            CP-->>CB: connection_object
+                        else Pool Exhausted
+                            CP->>CP: wait_for_connection(timeout=30)
+                            CP-->>CB: connection_object
+                        end
+
+                        CB->>CB: cursor = connection.cursor(buffered=True)
+                        CB->>CB: cursor.execute(sql, params)
+                        CB->>CB: results = cursor.fetchall()
+                        CB->>CB: cursor.close()
+                        CB->>CP: return_connection(connection)
+                        CP->>CP: mark_connection_available()
+                        CB-->>CST: query_results
+
+                        CST->>CST: process_results(query_results)
+                        CST-->>CB: processed_data
+                        CB->>CB: reset_failure_count()
+                        CB-->>ETCT: successful_result
+
+                        ETCT->>CM: cache_result(cache_key, result, timestamp)
+                        CM->>CM: store_with_ttl(300_seconds)
+
+                        ETCT->>PM: performance_monitor_end()
+                        PM->>PM: calculate_execution_time()
+                        PM->>PM: update_statistics()
+
+                        ETCT->>TUT: record_tool_call_complete(result, cache_hit=false)
+                        ETCT->>ET: track_tool_execution_complete(result, execution_time)
+
+                    else Circuit Open
+                        CB-->>ETCT: circuit_breaker_open_error
+                        ETCT->>ET: add_error("Circuit breaker open", "circuit_breaker")
+                        ETCT->>TUT: record_tool_call_failed("Circuit breaker open")
+                    end
+
+                    ETCT-->>RW: tool_result
+                end
+
+                RW->>RW: process_tool_result(result)
+                RW->>ET: add_logical_inference(result_analysis)
+
+                alt Result Sufficient
+                    RW->>RW: generate_final_response()
+                    RW->>RW: break_iteration_loop()
+                else Need More Information
+                    RW->>RW: continue_reasoning()
+                    RW->>RW: select_next_tool()
+                end
+
+            else Direct Response
+                RW->>RW: generate_response_from_knowledge()
+                RW->>ET: add_thinking_process("Direct response generated")
+            end
         end
 
-        AsyncTools->>Tracker: record_parallel_execution(tools=3, time=0.4s)
-        AsyncTools-->>React: Combined order data
-        deactivate AsyncTools
+        RW-->>AR: final_response
+        AR-->>CA: complete_response
 
-        Note over React, Vector: Subgoal 2: Warranty Analysis
-        React->>Tools: analyze_warranty_coverage()
-        Tools->>Vector: search_warranty_policies()
-        Vector-->>Tools: Warranty terms
-        Tools->>Tracker: record_tool_call()
-        Tools-->>React: Warranty analysis
+    else Complex Query (score >= 2)
+        CA->>ET: add_thinking_process("Complex query detected, initiating decomposition")
+        CA->>CA: execute_intelligent_query_path()
 
-        Note over React, LLM: Subgoal 3: Generate Recommendations
-        React->>LLM: synthesize_recommendations(order_data, warranty_info)
-        LLM-->>React: Detailed recommendations
-    end
+        Note over CA,QD: Intelligent Query Decomposition Process
 
-    Agent->>Decomposer: synthesize_results(subgoal_results)
-    Decomposer-->>Agent: Comprehensive response
-    Agent->>Monitor: log_complex_query(subgoals=3, total_time=2.1s)
-    Agent-->>UI: Detailed analysis with recommendations
-    UI-->>User: Complete warranty analysis and solutions
+        CA->>QD: decompose_query(query)
+        QD->>LLM: complete(decomposition_prompt)
 
-    Note over User, Monitor: 💾 Cache Demonstration Flow
-    User->>UI: "demo cache" command
-    UI->>Agent: demonstrate_cache_behavior()
+        Note right of LLM: Decomposition prompt:<br/>"Break down this complex query into 5-10<br/>specific, actionable subgoals..."
 
-    loop 3 times (Cache Demo)
-        Agent->>Tools: get_order_details(1001)
+        LLM->>LLM: analyze query structure
+        LLM->>LLM: identify key components
+        LLM->>LLM: generate 5-10 subgoals
+        LLM-->>QD: subgoals_response
 
-        alt First call
-            Tools->>Cache: check_cache("order_details_1001")
-            Cache-->>Tools: Cache miss
-            Tools->>DB: execute_query()
-            DB->>MySQL: Database query
-            MySQL-->>DB: Results
-            DB-->>Tools: Order data
-            Tools->>Cache: store_cache(ttl=300s)
-            Tools->>Tracker: record_db_call(time=0.12s)
-        else Subsequent calls
-            Tools->>Cache: check_cache("order_details_1001")
-            Cache-->>Tools: Cache hit
-            Tools->>Tracker: record_cache_hit(time=0.001s)
+        QD->>QD: _parse_decomposition_response(response)
+        QD->>QD: extract numbered subgoals
+        QD->>QD: classify by type (data_collection, analysis, synthesis)
+        QD->>QD: assign priority order
+        QD->>QD: _enforce_subgoal_range(5-10 subgoals)
+
+        alt Too Few Subgoals (< 5)
+            QD->>QD: _expand_subgoals(target=5)
+            QD->>QD: add validation steps
+            QD->>QD: add cross-reference steps
+            QD->>QD: add quality check steps
+        else Too Many Subgoals (> 10)
+            QD->>QD: _condense_subgoals(target=10)
+            QD->>QD: combine similar data collection steps
+            QD->>QD: merge related analysis steps
         end
 
-        Tools-->>Agent: Order details
+        QD-->>CA: structured_subgoals[]
+
+        CA->>ET: add_query_decomposition(complexity_score, subgoals)
+        ET->>ET: create decomposition_node
+        ET-->>CA: decomposition tracked
+
+        Note over CA,AR: Sequential Subgoal Execution with Context Building
+
+        CA->>CA: results = []
+        CA->>CA: context = []
+
+        loop For Each Subgoal (i=1 to N)
+            CA->>ET: add_thinking_process(f"Processing subgoal {i}")
+
+            CA->>CA: contextual_query = build_context(subgoal, context)
+            alt Has Previous Context
+                CA->>CA: contextual_query = f"Based on: {context}. Now: {subgoal}"
+                CA->>ET: add_logical_inference("Context incorporation", context)
+            end
+
+            CA->>CA: _execute_simple_query(contextual_query)
+
+            Note over CA,AR: Each subgoal follows full agent execution
+
+            CA->>AR: query(contextual_query)
+            AR->>RW: process subgoal
+
+            Note over RW,ETCT: Same detailed execution as simple query above
+
+            RW-->>AR: subgoal_result
+            AR-->>CA: subgoal_complete
+
+            CA->>CA: results.append({subgoal, result, type})
+            CA->>CA: context.append(result_summary)
+            CA->>ET: add_logical_inference(f"Subgoal {i} completed", result)
+        end
+
+        Note over CA,AR: Result Synthesis Phase
+
+        CA->>CA: _synthesize_results(original_query, results)
+        CA->>ET: track_response_synthesis(results, "subgoal_based")
+
+        CA->>CA: separate results by type
+        CA->>CA: data_results = filter(type='data_collection')
+        CA->>CA: analysis_results = filter(type='analysis')
+        CA->>CA: synthesis_results = filter(type='synthesis')
+
+        CA->>CA: build_comprehensive_response()
+        CA->>CA: add_executive_summary()
+        CA->>CA: add_actionable_recommendations()
+
+        CA->>ET: complete_result_synthesis(final_response)
+        CA-->>CA: synthesized_response
     end
 
-    Agent->>Cache: get_detailed_stats()
-    Cache-->>Agent: Hit rate: 66.7%
-    Agent-->>UI: Cache performance demonstration
-    UI-->>User: "Cache demo: First call 0.12s, subsequent calls 0.001s"
+    Note over CA,ET: Query Completion and Tracking Finalization
 
-    Note over User, Monitor: 📊 Performance Monitoring Flow
-    User->>UI: Request performance metrics
-    UI->>Agent: show_performance_metrics()
+    CA->>ET: finalize_query(final_response, success=true)
+    ET->>ET: calculate_total_execution_time()
+    ET->>ET: analyze_execution_pattern()
+    ET->>ET: generate_performance_summary()
 
-    Agent->>Monitor: get_system_metrics()
-    Monitor-->>Agent: CPU, Memory, Threads
+    ET->>ET: create_interactive_html_graph()
+    ET->>ET: add_node_details_and_relationships()
+    ET->>ET: add_clickable_interactions()
+    ET->>ET: include_performance_metrics()
 
-    Agent->>Tracker: get_comprehensive_report()
-    Tracker-->>Agent: Tool usage statistics
+    ET->>FS: save_html_to_generated_callgraphs_directory()
+    FS-->>ET: file_saved_successfully
 
-    Agent->>Cache: get_detailed_stats()
-    Cache-->>Agent: Cache performance
+    ET->>ET: export_execution_summary()
+    ET-->>CA: execution_complete_with_summary
 
-    Agent->>DB: get_query_stats()
-    DB-->>Agent: Database performance
+    CA-->>U: formatted_response + performance_metrics
 
-    Agent-->>UI: Consolidated metrics
-    UI-->>User: Performance dashboard
+    Note over U,WB: 📊 PARALLEL PROCESSING FOR EXPERT SCENARIOS
 
-    Note over User, Monitor: ⚠️ Error Handling Flow
-    User->>UI: "Invalid query with bad order ID 99999"
-    UI->>Agent: run_query(invalid_query)
-    Agent->>React: process_query()
-    React->>Tools: get_order_details(99999)
+    opt Multi-Order Expert Analysis
+        CA->>AT: get_multiple_orders_parallel([1007, 1017, 1023])
+        AT->>SEM: acquire semaphore (limit=10)
+        SEM-->>AT: semaphore_acquired
 
-    Tools->>DB: execute_query(99999)
-    DB->>Pool: get_connection()
-    Pool->>MySQL: SELECT * WHERE id=99999
-    MySQL-->>Pool: Empty result
-    Pool-->>DB: No data
-    DB-->>Tools: Empty result
+        AT->>AT: create_async_tasks()
+        AT->>TEX: asyncio.create_task for each order
 
-    Tools->>Tracker: record_tool_call(success=false, error="Order not found")
-    Tools-->>React: {"error": "Order 99999 not found"}
-    React-->>Agent: Error response
-    Agent->>Monitor: log_error(query_failed=true)
-    Agent-->>UI: "Order 99999 not found"
-    UI-->>User: Error message with suggestions
+        par Parallel Order Processing
+            AT->>TEX: execute task 1
+            TEX->>CST: get_order_details(1007)
+            CST->>DBM: execute database query 1
+        and
+            AT->>TEX: execute task 2
+            TEX->>CST: get_order_details(1017)
+            CST->>DBM: execute database query 2
+        and
+            AT->>TEX: execute task 3
+            TEX->>CST: get_order_details(1023)
+            CST->>DBM: execute database query 3
+        end
 
-    Note over User, Monitor: 🔄 Health Check Flow
-    User->>UI: Request health check
-    UI->>Agent: health_check()
+        AT->>AT: await asyncio.gather(*tasks)
+        AT->>AT: combine_parallel_results()
+        AT->>SEM: release semaphore
+        AT-->>CA: combined_order_data
 
-    par Database Health
-        Agent->>DB: test_connection()
-        DB->>MySQL: SELECT 1
-        MySQL-->>DB: 1
-        DB-->>Agent: healthy
-    and LLM Health
-        Agent->>LLM: test_query()
-        LLM-->>Agent: healthy
-    and Cache Health
-        Agent->>Cache: get_status()
-        Cache-->>Agent: operational
-    and Memory Health
-        Agent->>Monitor: check_memory()
-        Monitor-->>Agent: within_limits
+        CA->>CA: analyze_combined_results()
+        CA->>CA: identify_patterns_and_issues()
+        CA->>CA: generate_comparative_analysis()
+        CA-->>U: expert_level_multi_order_analysis
     end
 
-    Agent-->>UI: System health report
-    UI-->>User: "All systems operational"
+    Note over U,WB: 📈 PERFORMANCE MONITORING AND VISUALIZATION
 
-    Note over User, Monitor: 🚪 System Shutdown
-    User->>UI: Exit application
-    UI->>Agent: cleanup()
+    opt Performance Metrics Request
+        U->>CA: show_performance_metrics()
 
-    Agent->>AsyncTools: close()
-    AsyncTools-->>Agent: Async resources closed
+        CA->>CM: get_detailed_stats()
+        CM->>CM: calculate_global_hit_rate()
+        CM->>CM: analyze_method_specific_performance()
+        CM->>CM: generate_recent_call_history()
+        CM-->>CA: comprehensive_cache_stats
 
-    Agent->>DB: disconnect()
-    DB->>Pool: close_all_connections()
-    Pool->>MySQL: Close connections
-    MySQL-->>Pool: Connections closed
-    Pool-->>DB: Pool closed
-    DB-->>Agent: Database disconnected
+        CA->>TUT: get_comprehensive_report()
+        TUT->>TUT: calculate_session_summary()
+        TUT->>TUT: analyze_tool_ranking()
+        TUT->>TUT: generate_performance_analysis()
+        TUT->>TUT: identify_efficiency_patterns()
+        TUT-->>CA: detailed_tool_usage_report
 
-    Agent->>Tracker: export_final_stats()
-    Tracker-->>Agent: Session stats saved
+        CA->>DBM: get_query_statistics()
+        DBM->>DBM: compile_circuit_breaker_stats()
+        DBM->>DBM: analyze_connection_pool_usage()
+        DBM-->>CA: database_performance_metrics
 
-    Agent-->>UI: Cleanup complete
-    UI-->>User: "Goodbye!"
+        alt PSUTIL Available
+            CA->>PM: get_system_resources()
+            PM->>PM: process.memory_info()
+            PM->>PM: process.cpu_percent()
+            PM->>PM: process.num_threads()
+            PM-->>CA: system_resource_usage
+        end
+
+        CA->>CA: compile_comprehensive_metrics()
+        CA->>CA: generate_performance_recommendations()
+        CA-->>U: detailed_performance_dashboard
+    end
+
+    opt Call Graph Visualization
+        U->>CA: view_call_graphs()
+        CA->>FS: scan ./generated_callgraphs/ directory
+        FS-->>CA: html_files_list
+
+        CA->>CA: sort_by_modification_time()
+        CA->>CA: display_file_selection_menu()
+        CA-->>U: available_graphs_list
+
+        U->>CA: select graph file
+        CA->>FS: get_absolute_path(selected_file)
+        FS-->>CA: absolute_file_path
+
+        CA->>WB: webbrowser.open(file_url)
+        WB->>WB: launch_default_browser()
+        WB->>WB: load_interactive_html_graph()
+        WB-->>U: interactive_call_graph_visualization
+    end
+
+    Note over U,WB: 🧹 RESOURCE MANAGEMENT AND CLEANUP
+
+    opt Cache Management
+        U->>CA: clear_caches()
+        CA->>CM: show_current_cache_state()
+        CM-->>CA: cache_statistics
+
+        CA-->>U: cache_cleanup_options
+        U->>CA: select_cleanup_option
+
+        alt Clear Method Caches
+            CA->>CM: clear_all_caches()
+            CM->>CM: reset_global_statistics()
+            CM->>CM: clear_method_specific_caches()
+        else Clear Tool History
+            CA->>TUT: clear_history()
+            TUT->>TUT: reset_tool_call_tracking()
+            TUT->>TUT: clear_performance_analytics()
+        else Clear Everything
+            CA->>CM: clear_all_caches()
+            CA->>TUT: clear_history()
+            CA->>GC: gc.collect()
+            GC->>GC: force_garbage_collection()
+            GC-->>CA: memory_freed
+        end
+
+        CA-->>U: cleanup_complete_with_statistics
+    end
+
+    Note over U,WB: ⚡ ERROR HANDLING AND RECOVERY MECHANISMS
+
+    opt Error Scenarios
+        CA->>CST: tool_execution_with_error()
+        CST->>CB: execute_with_circuit_breaker()
+        CB->>CB: check_current_state()
+
+        alt Circuit Breaker Open
+            CB->>CB: check_recovery_timeout()
+            alt Recovery Time Elapsed
+                CB->>CB: state = 'HALF_OPEN'
+                CB->>DBM: attempt_single_operation()
+                alt Operation Successful
+                    DBM-->>CB: successful_result
+                    CB->>CB: state = 'CLOSED', reset_failure_count()
+                else Operation Failed
+                    DBM-->>CB: operation_failed
+                    CB->>CB: state = 'OPEN', increment_failure_count()
+                end
+            else Still In Timeout
+                CB-->>CST: CircuitBreakerOpenException
+                CST->>ET: track_error("Circuit breaker open", "circuit_breaker")
+                CST-->>CA: graceful_error_response
+            end
+
+        else Circuit Breaker Closed
+            CB->>DBM: execute_database_operation()
+            DBM->>CP: get_connection_with_timeout()
+
+            alt Connection Available
+                CP-->>DBM: database_connection
+                DBM->>DBM: execute_query()
+                alt Query Successful
+                    DBM-->>CB: query_results
+                    CB->>CB: record_successful_operation()
+                else Query Failed
+                    DBM-->>CB: database_error
+                    CB->>CB: increment_failure_count()
+                    CB->>CB: check_failure_threshold()
+                    alt Threshold Exceeded
+                        CB->>CB: state = 'OPEN'
+                        CB->>CB: last_failure_time = now()
+                    end
+                end
+
+            else Connection Timeout
+                CP-->>DBM: connection_timeout_error
+                DBM-->>CB: timeout_error
+                CB->>CB: increment_failure_count()
+            end
+        end
+
+        CST->>CA: handle_error_gracefully()
+        CA->>ET: add_comprehensive_error_details()
+        CA->>CA: generate_user_friendly_error_message()
+        CA->>CA: suggest_alternative_actions()
+        CA-->>U: informative_error_response_with_suggestions
+    end
+
+    Note over U,WB: 🔄 SYSTEM SHUTDOWN AND CLEANUP
+
+    opt System Shutdown
+        U->>MM: exit_application()
+        MM->>CA: cleanup_resources()
+
+        CA->>AT: async_tools.close()
+        AT->>TEX: executor.shutdown(wait=True)
+        TEX->>TEX: complete_pending_tasks()
+        TEX->>TEX: terminate_worker_threads()
+        TEX-->>AT: executor_shutdown_complete
+        AT->>SEM: release_all_semaphores()
+        SEM-->>AT: semaphores_released
+        AT-->>CA: async_tools_cleaned_up
+
+        CA->>DBM: disconnect_database()
+        DBM->>CP: close_all_connections()
+
+        loop For Each Connection in Pool
+            CP->>CP: connection.close()
+            CP->>CP: remove_from_pool()
+        end
+
+        CP-->>DBM: all_connections_closed
+        DBM->>CB: cleanup_circuit_breaker()
+        CB->>CB: reset_state_and_counters()
+        CB-->>DBM: circuit_breaker_cleaned
+        DBM-->>CA: database_cleanup_complete
+
+        CA->>CM: final_cache_statistics()
+        CM->>CM: export_final_metrics()
+        CM-->>CA: cache_final_stats
+
+        CA->>TUT: export_final_tool_usage_report()
+        TUT->>TUT: calculate_session_totals()
+        TUT->>TUT: generate_usage_summary()
+        TUT-->>CA: final_tool_report
+
+        CA->>ET: export_all_execution_graphs()
+        ET->>ET: finalize_pending_tracking()
+        ET->>FS: save_session_summary()
+        FS-->>ET: session_data_saved
+        ET-->>CA: tracking_data_preserved
+
+        CA->>LOG: log_session_summary()
+        LOG->>LOG: write_final_statistics()
+        LOG->>LOG: close_log_handlers()
+        LOG-->>CA: logging_finalized
+
+        CA->>GC: force_final_cleanup()
+        GC->>GC: collect_all_garbage()
+        GC->>GC: clear_caches()
+        GC-->>CA: memory_cleaned
+
+        CA-->>MM: cleanup_complete
+        MM-->>U: "Goodbye! Session data preserved."
+    end
+
+    Note over U,WB: 🔍 DETAILED CACHE BEHAVIOR DEMONSTRATION
+
+    opt Cache Behavior Demo
+        U->>CA: demonstrate_cache_behavior()
+        CA->>CA: test_order_id = 1001
+
+        loop 3 Iterations
+            CA->>CA: start_time = time.time()
+            CA->>CST: get_order_details(1001)
+            CST->>ETCT: wrapped_get_order_details(1001)
+
+            ETCT->>CM: get_cache_key("get_order_details", (1001,), {})
+            CM->>CM: _make_hashable((1001,))
+            CM->>CM: _make_hashable({})
+            CM->>CM: create_key_data_dict()
+            CM->>CM: json.dumps(key_data, sort_keys=True)
+            CM->>CM: hashlib.md5(key_string.encode())
+            CM-->>ETCT: cache_key_hash
+
+            ETCT->>CM: check_cache_entry(cache_key)
+            CM->>CM: check_if_key_exists()
+            CM->>CM: check_ttl_validity()
+
+            alt First Call - Cache Miss
+                CM-->>ETCT: cache_miss
+                ETCT->>ET: track_cache_operation(hit=false)
+                ETCT->>CST: execute_original_method(1001)
+                CST->>DBM: execute_query("SELECT o.order_id, ... WHERE o.order_id = %s", (1001,))
+                DBM->>CP: get_pooled_connection()
+                CP-->>DBM: connection
+                DBM->>DBM: cursor.execute(query, params)
+                DBM->>DBM: results = cursor.fetchall()
+                DBM->>CP: return_connection()
+                DBM-->>CST: query_results
+                CST->>CST: format_order_details(results)
+                CST-->>ETCT: formatted_order_data
+                ETCT->>CM: cache_result(cache_key, result, datetime.now())
+                CM->>CM: store_with_ttl(600_seconds)
+                ETCT-->>CA: order_details (from database)
+
+            else Subsequent Calls - Cache Hit
+                CM->>CM: retrieve_cached_result(cache_key)
+                CM-->>ETCT: cached_order_details
+                ETCT->>ET: track_cache_operation(hit=true)
+                ETCT-->>CA: order_details (from cache)
+            end
+
+            CA->>CA: execution_time = time.time() - start_time
+            CA->>CM: get_method_cache_stats("get_order_details")
+            CM-->>CA: current_hit_rate
+            CA-->>U: display_call_results_and_timing()
+        end
+
+        CA-->>U: cache_behavior_analysis_complete
+    end
+
+    Note over U,WB: 🚀 ADVANCED ASYNC PROCESSING WORKFLOW
+
+    opt Advanced Multi-Customer Analysis
+        U->>CA: "Analyze customers in Auburn, AL with geographic performance"
+        CA->>QD: assess_query_complexity(query)
+        QD-->>CA: {complex: true, patterns: ['multi_analysis', 'geographic']}
+
+        CA->>QD: decompose_query(query)
+        QD-->>CA: subgoals[
+        Note right of QD: 1. Identify Auburn, AL customers<br/>2. Get order history for each<br/>3. Analyze geographic performance<br/>4. Calculate delivery metrics<br/>5. Compare with state averages<br/>6. Generate recommendations
+
+        loop For Each Subgoal
+            alt Subgoal 2: Multi-Customer Orders
+                CA->>AT: analyze_multiple_customers_parallel(customer_emails)
+                AT->>SEM: acquire_semaphore_permits(len(customer_emails))
+
+                AT->>AT: create_async_tasks()
+
+                par Customer 1 Analysis
+                    AT->>TEX: run_in_executor(analyze_customer_1)
+                    TEX->>CST: analyze_customer_orders_comprehensive(email1)
+                    CST->>DBM: complex_customer_analysis_query()
+                    DBM-->>CST: customer_1_data
+                    CST-->>TEX: processed_customer_1_analysis
+                    TEX-->>AT: customer_1_complete
+                and Customer 2 Analysis
+                    AT->>TEX: run_in_executor(analyze_customer_2)
+                    TEX->>CST: analyze_customer_orders_comprehensive(email2)
+                    CST->>DBM: complex_customer_analysis_query()
+                    DBM-->>CST: customer_2_data
+                    CST-->>TEX: processed_customer_2_analysis
+                    TEX-->>AT: customer_2_complete
+                and Customer N Analysis
+                    AT->>TEX: run_in_executor(analyze_customer_N)
+                    TEX->>CST: analyze_customer_orders_comprehensive(emailN)
+                    CST->>DBM: complex_customer_analysis_query()
+                    DBM-->>CST: customer_N_data
+                    CST-->>TEX: processed_customer_N_analysis
+                    TEX-->>AT: customer_N_complete
+                end
+
+                AT->>AT: await_asyncio_gather(*tasks)
+                AT->>AT: combine_customer_analyses()
+                AT->>AT: identify_cross_customer_patterns()
+                AT->>SEM: release_semaphore_permits()
+                AT-->>CA: combined_multi_customer_analysis
+
+            else Standard Subgoal Processing
+                CA->>CA: execute_single_threaded_subgoal()
+            end
+        end
+
+        CA->>CA: synthesize_geographic_analysis()
+        CA-->>U: comprehensive_geographic_performance_report
+    end
+
+    Note over U,WB: 🧠 LLM REASONING AND DECISION MAKING DETAILS
+
+    opt Detailed LLM Reasoning Process
+        CA->>AR: query("Complex business scenario with multiple factors")
+        AR->>RW: process_with_react_pattern()
+
+        RW->>RW: iteration = 0
+
+        loop While iteration < max_iterations AND not_finished
+            RW->>RW: iteration += 1
+            RW->>LLM: complete(react_prompt_template)
+
+            Note right of LLM: ReAct Prompt Structure:<br/>SYSTEM: You are a customer service expert...<br/>USER: {query}<br/>TOOLS: {tool_descriptions}<br/>PREVIOUS: {conversation_history}<br/>THINK: Analyze the situation step by step<br/>ACT: Choose the best tool and parameters
+
+            LLM->>LLM: analyze_query_context()
+            LLM->>LLM: consider_available_tools()
+            LLM->>LLM: evaluate_previous_results()
+            LLM->>LLM: generate_reasoning_chain()
+
+            LLM-->>RW: llm_response{
+            Note right of LLM: THINK: The user is asking about...<br/>I need to gather information about...<br/>The best approach would be to...<br/>ACT: I'll use get_order_details tool<br/>with parameters: order_id=1001
+
+            RW->>RW: parse_llm_response()
+            RW->>RW: extract_thought_process()
+            RW->>RW: extract_action_decision()
+
+            RW->>ET: add_thinking_process(thought_content)
+            ET->>ET: create_thinking_node()
+            ET->>ET: link_to_current_execution_path()
+            ET-->>RW: thinking_tracked
+
+            alt Action is Tool Call
+                RW->>RW: parse_tool_name_and_parameters()
+                RW->>RW: validate_tool_exists()
+                RW->>RW: validate_parameters()
+
+                RW->>ET: add_action_selection(available_tools, selected_tool, reasoning)
+                ET->>ET: create_action_node()
+                ET->>ET: record_decision_rationale()
+                ET-->>RW: action_tracked
+
+                RW->>ETCT: execute_selected_tool(tool_name, parameters)
+
+                Note over ETCT,DBM: Full tool execution cycle as detailed above
+
+                ETCT-->>RW: tool_execution_result
+
+                RW->>RW: evaluate_tool_result()
+                RW->>RW: update_conversation_context()
+                RW->>ET: add_logical_inference(result_analysis, evidence, conclusion)
+
+                alt Result Answers Query
+                    RW->>RW: sufficient_information = True
+                    RW->>RW: prepare_final_response()
+                else Need More Information
+                    RW->>RW: sufficient_information = False
+                    RW->>RW: determine_next_information_need()
+                    RW->>RW: continue_reasoning_loop()
+                end
+
+            else Action is Final Answer
+                RW->>RW: extract_final_response()
+                RW->>RW: validate_response_completeness()
+                RW->>ET: add_thinking_process("Generating final response")
+                RW->>RW: finished = True
+            end
+        end
+
+        alt Max Iterations Reached
+            RW->>RW: generate_partial_response()
+            RW->>ET: add_error("Max iterations reached", "iteration_limit")
+            RW-->>AR: partial_response_with_explanation
+        else Successful Completion
+            RW->>RW: format_final_response()
+            RW->>ET: add_thinking_process("Query completed successfully")
+            RW-->>AR: complete_successful_response
+        end
+
+        AR-->>CA: agent_final_response
+    end
+
+    Note over U,WB: 📊 COMPREHENSIVE ERROR TRACKING AND RECOVERY
+
+    opt Error Handling Deep Dive
+        CST->>DBM: execute_query_with_full_error_handling()
+        DBM->>CB: call_with_comprehensive_protection()
+
+        CB->>CB: pre_execution_state_check()
+
+        alt Circuit Breaker State Analysis
+            CB->>CB: current_state = get_state()
+
+            alt State is CLOSED
+                CB->>CB: proceed_with_operation()
+                CB->>DBM: attempt_database_operation()
+
+                DBM->>CP: request_connection_with_detailed_monitoring()
+                CP->>CP: connection_pool_analysis()
+
+                alt Pool Health Check
+                    CP->>CP: check_active_connections()
+                    CP->>CP: validate_connection_health()
+
+                    alt Healthy Connection Available
+                        CP->>CP: allocate_connection()
+                        CP-->>DBM: healthy_connection
+
+                        DBM->>DBM: execute_with_timeout_and_monitoring()
+                        DBM->>PM: start_query_performance_tracking()
+
+                        alt Query Execution Success
+                            DBM->>DBM: query_results = cursor.fetchall()
+                            DBM->>PM: end_performance_tracking(success=True)
+                            PM->>PM: update_success_metrics()
+                            DBM->>CB: record_successful_operation()
+                            CB->>CB: reset_or_maintain_healthy_state()
+                            DBM-->>CST: successful_query_results
+
+                        else Query Execution Failure
+                            DBM->>DBM: capture_sql_error_details()
+                            DBM->>PM: end_performance_tracking(success=False)
+                            PM->>PM: update_failure_metrics()
+                            DBM->>ET: track_detailed_sql_error(error_details)
+                            DBM->>CB: record_operation_failure()
+                            CB->>CB: increment_failure_count()
+                            CB->>CB: evaluate_circuit_state_transition()
+
+                            alt Failure Threshold Exceeded
+                                CB->>CB: transition_to_OPEN_state()
+                                CB->>CB: set_failure_timestamp()
+                                CB->>ET: track_circuit_breaker_opened()
+                            end
+
+                            DBM-->>CST: sql_error_with_context
+                        end
+
+                        DBM->>CP: return_connection_to_pool()
+                        CP->>CP: validate_connection_before_return()
+                        CP->>CP: mark_connection_available()
+
+                    else Unhealthy or No Available Connections
+                        CP->>CP: attempt_connection_recovery()
+                        CP->>CP: create_new_connection_if_possible()
+
+                        alt Recovery Successful
+                            CP-->>DBM: recovered_connection
+                        else Recovery Failed
+                            CP->>ET: track_connection_pool_exhaustion()
+                            CP-->>DBM: connection_pool_error
+                            DBM->>CB: record_connection_failure()
+                            CB->>CB: evaluate_failure_impact()
+                        end
+                    end
+                end
+
+            else State is HALF_OPEN
+                CB->>CB: attempt_recovery_operation()
+                CB->>DBM: single_test_operation()
+
+                alt Recovery Test Successful
+                    DBM-->>CB: test_operation_success
+                    CB->>CB: transition_to_CLOSED_state()
+                    CB->>CB: reset_failure_counters()
+                    CB->>ET: track_circuit_recovery_success()
+                    CB->>CB: proceed_with_original_operation()
+
+                else Recovery Test Failed
+                    DBM-->>CB: test_operation_failed
+                    CB->>CB: transition_back_to_OPEN_state()
+                    CB->>CB: extend_recovery_timeout()
+                    CB->>ET: track_circuit_recovery_failure()
+                    CB-->>CST: circuit_still_open_error
+                end
+
+            else State is OPEN
+                CB->>CB: check_recovery_timeout()
+
+                alt Recovery Timeout Elapsed
+                    CB->>CB: transition_to_HALF_OPEN()
+                    CB->>ET: track_circuit_recovery_attempt()
+                    CB->>CB: attempt_recovery_operation()
+
+                else Still in Recovery Period
+                    CB->>CB: calculate_remaining_timeout()
+                    CB->>ET: track_circuit_breaker_rejection()
+                    CB-->>CST: circuit_breaker_open_with_timeout_info
+                end
+            end
+        end
+
+        CST->>CST: process_error_result()
+        CST->>CST: categorize_error_type()
+        CST->>CST: determine_user_impact()
+        CST->>CST: generate_recovery_suggestions()
+
+        CST->>ET: add_comprehensive_error_context(
+        Note right of CST: error_type: "database_connection"<br/>error_details: full_stack_trace<br/>user_impact: "order_lookup_failed"<br/>recovery_actions: suggested_steps<br/>system_state: current_health_metrics
+
+        ET->>ET: create_error_node_with_full_context()
+        ET->>ET: link_error_to_execution_path()
+        ET->>ET: categorize_for_pattern_analysis()
+        ET-->>CST: error_tracking_complete
+
+        CST->>CST: generate_user_friendly_error_message()
+        CST->>CST: include_alternative_action_suggestions()
+        CST-->>CA: graceful_error_response_with_guidance
+
+        CA->>CA: evaluate_query_retry_possibility()
+        CA->>CA: suggest_simplified_alternative_queries()
+        CA-->>U: informative_error_with_helpful_suggestions
+    end
+
+    Note over U,WB: 🔄 DYNAMIC CONFIGURATION AND REAL-TIME ADAPTATION
+
+    opt Configuration Reload and System Adaptation
+        U->>CA: reload_configuration()
+        CA->>CFG: load_dotenv(override=True)
+        CFG->>CFG: re_parse_environment_variables()
+        CFG->>CFG: validate_new_configuration_values()
+        CFG->>CFG: compare_with_previous_configuration()
+        CFG-->>CA: configuration_changes_identified
+
+        CA->>CA: apply_configuration_changes()
+
+        alt Database Configuration Changed
+            CA->>DBM: update_database_configuration()
+            DBM->>CP: reconfigure_connection_pool()
+            CP->>CP: gradually_replace_connections()
+            CP-->>DBM: pool_reconfigured
+        end
+
+        alt LLM Configuration Changed
+            CA->>LLM: update_llm_parameters()
+            LLM->>LLM: adjust_temperature_and_tokens()
+            LLM->>LLM: test_new_configuration()
+            LLM-->>CA: llm_reconfigured
+        end
+
+        alt Cache Configuration Changed
+            CA->>CM: update_cache_settings()
+            CM->>CM: adjust_ttl_values()
+            CM->>CM: resize_cache_limits()
+            CM-->>CA: cache_reconfigured
+        end
+
+        alt Performance Configuration Changed
+            CA->>AT: update_async_settings()
+            AT->>TEX: adjust_worker_pool_size()
+            AT->>SEM: modify_semaphore_limits()
+            AT-->>CA: async_performance_updated
+        end
+
+        CA->>LOG: log_configuration_changes()
+        CA->>ET: track_system_reconfiguration()
+        CA-->>U: configuration_reload_complete_with_summary
+    end

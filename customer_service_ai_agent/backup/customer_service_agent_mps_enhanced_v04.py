@@ -1,8 +1,45 @@
 #!/usr/bin/env python3
 """
-Customer Service AI Agent with Database Integration
-Equivalent to the Jupyter notebook but with MySQL database connectivity
+Customer Service AI Agent with Database Integration and Enhanced Tool Usage Tracking
+
+INTEGRATION CHECKLIST:
+
+✅ 1. Import the call graph visualizer module
+✅ 2. Modify CustomerServiceAgent.__init__ to include execution tracker
+✅ 3. Wrap tools with TrackedCustomerServiceTools in create_tools()
+    ✅ 4. Replace run_query() with tracked version
+✅ 5. Replace run_intelligent_query() with tracked version
+✅ 6. Add call graph viewer methods
+✅ 7. Update main menu to include call graph options
+✅ 8. Enhance custom query method with tracking info
+
+WHAT GETS TRACKED:
+• Query start and complexity assessment
+• Agent thinking processes
+• Tool selection reasoning
+• Database operations (with timing)
+• Cache hits and misses
+• Logical inference steps
+• Error handling and recovery
+• Result synthesis
+• Final response generation
+
+OUTPUT:
+• Interactive HTML files in ./generated_callgraphs/
+• Each query creates one complete call graph
+• Graphs show execution flow with nodes and edges
+    • Clickable nodes show detailed information
+• Graphs can be opened in browser for interaction
+
+USAGE:
+1. Run any query (predefined scenarios or custom)
+2. Query execution is automatically tracked
+3. Call graph HTML file is generated
+4. Use menu option 10 to view graphs
+5. Use menu option 11 for statistics
+
 """
+
 import functools
 import subprocess
 import sys
@@ -13,8 +50,20 @@ from concurrent.futures import ThreadPoolExecutor
 import time
 from functools import wraps
 from dotenv import load_dotenv
-from dataclasses import dataclass, field  # ADD field import
+from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
+import hashlib
+import json
+
+
+from query_callgraph_visualizer_v01 import (
+    execution_tracker,
+    EnhancedQueryExecutionTracker,
+    TrackedCustomerServiceTools,
+    integrate_with_agent,
+    NodeType
+)
+
 
 load_dotenv()  # Load .env file if it exists
 
@@ -210,12 +259,12 @@ class Config:
     tokenizers_parallelism: bool = field(default_factory=lambda: os.getenv('TOKENIZERS_PARALLELISM', 'true').lower() == 'true')
 
     # Cache Directories
-    hf_hub_cache: str = field(default_factory=lambda: os.getenv('HF_HUB_CACHE', './hf_cache'))
-    st_cache: str = field(default_factory=lambda: os.getenv('SENTENCE_TRANSFORMERS_HOME', './st_cache'))
+    hf_hub_cache: str = field(default_factory=lambda: os.getenv('HF_HUB_CACHE', '../src/hf_cache'))
+    st_cache: str = field(default_factory=lambda: os.getenv('SENTENCE_TRANSFORMERS_HOME', '../src/st_cache'))
 
     # Logging Configuration
     log_level: str = field(default_factory=lambda: os.getenv('LOG_LEVEL', 'INFO'))
-    log_file: str = field(default_factory=lambda: os.getenv('LOG_FILE', 'customer_service_agent.log'))
+    log_file: str = field(default_factory=lambda: os.getenv('LOG_FILE', '../src/customer_service_agent.log'))
     log_format: str = field(default_factory=lambda: os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'))
 
     # Circuit Breaker Configuration
@@ -228,7 +277,7 @@ class Config:
     agent_memory_enabled: bool = field(default_factory=lambda: os.getenv('AGENT_MEMORY_ENABLED', 'false').lower() == 'true')
 
     # File Paths
-    policy_files_dir: str = field(default_factory=lambda: os.getenv('POLICY_FILES_DIR', 'policy_files'))
+    policy_files_dir: str = field(default_factory=lambda: os.getenv('POLICY_FILES_DIR', '../src/policy_files'))
 
     # FIXED: Use default_factory for mutable list
     support_files_default: List[str] = field(default_factory=lambda: (
@@ -301,7 +350,7 @@ def setup_logging():
     """Setup structured logging with file and console handlers"""
     # Use environment variables directly since config isn't created yet
     log_level = os.getenv('LOG_LEVEL', 'INFO')
-    log_file = os.getenv('LOG_FILE', 'customer_service_agent.log')
+    log_file = os.getenv('LOG_FILE', '../src/customer_service_agent.log')
     log_format = os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s')
 
     logging.basicConfig(
@@ -357,43 +406,313 @@ def memory_monitor(func):
 
 # Query Result Caching (ADD AFTER memory_monitor)
 def cached_query(ttl_seconds=300):
-    """Decorator for caching query results with TTL"""
-
+    """Decorator for caching query results with enhanced tracking"""
     def decorator(func):
-        cache = {}
-        cache_stats = {'hits': 0, 'misses': 0}
+        return cache_manager.cached_call(func, ttl_seconds)
+    return decorator
+
+
+# Enhanced Query Result Caching with detailed tracking
+class CacheManager:
+    """Advanced cache manager with detailed statistics and tracking"""
+
+    def __init__(self):
+        self.caches = {}  # Method-specific caches
+        self.global_stats = {
+            'total_calls': 0,
+            'cache_hits': 0,
+            'cache_misses': 0,
+            'total_cache_time_saved': 0,
+            'methods_tracked': set()
+        }
+        self.call_history = []  # Track all calls
+
+    def get_cache_key(self, func_name: str, args: tuple, kwargs: dict) -> str:
+        """Generate a unique cache key"""
+        key_data = {
+            'function': func_name,
+            'args': str(args),
+            'kwargs': str(sorted(kwargs.items()))
+        }
+        return hashlib.md5(json.dumps(key_data, sort_keys=True).encode()).hexdigest()
+
+    def cached_call(self, func, ttl_seconds=300):
+        """Enhanced caching decorator with detailed tracking"""
+        func_name = func.__name__
+
+        if func_name not in self.caches:
+            self.caches[func_name] = {}
+
+        self.global_stats['methods_tracked'].add(func_name)
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            key = f"{func.__name__}:{str(args)}:{str(sorted(kwargs.items()))}"
+            start_time = time.time()
+            cache_key = self.get_cache_key(func_name, args, kwargs)
             now = datetime.now()
 
+            # Record the call attempt
+            call_record = {
+                'timestamp': now,
+                'function': func_name,
+                'args': str(args)[:100] + ('...' if len(str(args)) > 100 else ''),
+                'cache_key': cache_key[:8],  # Short version for display
+                'hit': False,
+                'execution_time': 0,
+                'caller': self._get_caller_info()
+            }
+
+            self.global_stats['total_calls'] += 1
+
             # Check cache
-            if key in cache:
-                result, timestamp = cache[key]
+            if cache_key in self.caches[func_name]:
+                result, timestamp = self.caches[func_name][cache_key]
                 if now - timestamp < timedelta(seconds=ttl_seconds):
-                    cache_stats['hits'] += 1
+                    # Cache hit
+                    execution_time = time.time() - start_time
+                    call_record['hit'] = True
+                    call_record['execution_time'] = execution_time
+                    call_record['source'] = 'cache'
+
+                    self.global_stats['cache_hits'] += 1
+                    self.global_stats['total_cache_time_saved'] += 0.1  # Estimated time saved
+                    self.call_history.append(call_record)
+
                     return result
                 else:
-                    del cache[key]
+                    # Cache expired
+                    del self.caches[func_name][cache_key]
 
-            # Cache miss
-            cache_stats['misses'] += 1
+            # Cache miss - execute function
+            self.global_stats['cache_misses'] += 1
             result = func(*args, **kwargs)
-            cache[key] = (result, now)
+            execution_time = time.time() - start_time
+
+            # Store in cache
+            self.caches[func_name][cache_key] = (result, now)
+
+            call_record['execution_time'] = execution_time
+            call_record['source'] = 'database'
+            self.call_history.append(call_record)
 
             # Cache size management
-            if len(cache) > 1000:
-                oldest_key = min(cache.keys(), key=lambda k: cache[k][1])
-                del cache[oldest_key]
+            if len(self.caches[func_name]) > 1000:
+                oldest_key = min(self.caches[func_name].keys(),
+                                 key=lambda k: self.caches[func_name][k][1])
+                del self.caches[func_name][oldest_key]
 
             return result
 
-        wrapper.cache_stats = lambda: cache_stats.copy()
-        wrapper.clear_cache = lambda: cache.clear()
         return wrapper
 
-    return decorator
+    def _get_caller_info(self) -> str:
+        """Get information about who called the function"""
+        import inspect
+
+        # Look through the call stack to find the agent or query
+        for frame_info in inspect.stack():
+            filename = frame_info.filename
+            function_name = frame_info.function
+
+            # Skip our own frames
+            if 'customer_service_agent' in filename.lower():
+                if function_name in ['run_query', 'query', 'execute_decomposed_query']:
+                    return f"Agent.{function_name}"
+                elif 'scenario' in function_name.lower():
+                    return f"Scenario.{function_name}"
+
+        return "Unknown"
+
+    def get_detailed_stats(self) -> Dict[str, Any]:
+        """Get comprehensive cache statistics"""
+        total_calls = self.global_stats['total_calls']
+        hit_rate = (self.global_stats['cache_hits'] / total_calls * 100) if total_calls > 0 else 0
+
+        # Method-specific stats
+        method_stats = {}
+        for method_name in self.global_stats['methods_tracked']:
+            method_calls = [call for call in self.call_history if call['function'] == method_name]
+            method_hits = [call for call in method_calls if call['hit']]
+
+            method_stats[method_name] = {
+                'total_calls': len(method_calls),
+                'cache_hits': len(method_hits),
+                'cache_misses': len(method_calls) - len(method_hits),
+                'hit_rate': (len(method_hits) / len(method_calls) * 100) if method_calls else 0,
+                'avg_execution_time': sum(call['execution_time'] for call in method_calls) / len(method_calls) if method_calls else 0,
+                'cache_size': len(self.caches.get(method_name, {}))
+            }
+
+        return {
+            'global': {
+                'total_calls': total_calls,
+                'cache_hits': self.global_stats['cache_hits'],
+                'cache_misses': self.global_stats['cache_misses'],
+                'hit_rate': hit_rate,
+                'time_saved': self.global_stats['total_cache_time_saved'],
+                'methods_tracked': len(self.global_stats['methods_tracked'])
+            },
+            'by_method': method_stats,
+            'recent_calls': self.call_history[-20:] if self.call_history else []  # Last 20 calls
+        }
+
+    def clear_all_caches(self):
+        """Clear all caches and reset stats"""
+        self.caches.clear()
+        self.call_history.clear()
+        self.global_stats = {
+            'total_calls': 0,
+            'cache_hits': 0,
+            'cache_misses': 0,
+            'total_cache_time_saved': 0,
+            'methods_tracked': set()
+        }
+
+# Global cache manager instance
+cache_manager = CacheManager()
+
+
+# Tool Usage Tracking System
+class ToolUsageTracker:
+    """Track all tool usage with detailed analytics"""
+
+    def __init__(self):
+        self.tool_calls = []
+        self.tool_stats = {}
+        self.session_start = datetime.now()
+
+    def record_tool_call(self, tool_name: str, input_data: Any, result: Any,
+                         execution_time: float, caller_context: str = None,
+                         reasoning: str = None):
+        """Record a tool call with comprehensive details"""
+        call_record = {
+            'timestamp': datetime.now(),
+            'tool_name': tool_name,
+            'input_data': str(input_data)[:200] + ('...' if len(str(input_data)) > 200 else ''),
+            'result_summary': self._summarize_result(result),
+            'execution_time': execution_time,
+            'caller_context': caller_context or self._infer_caller_context(),
+            'reasoning': reasoning or "Tool call initiated by agent",
+            'success': not self._is_error_result(result),
+            'result_type': type(result).__name__
+        }
+
+        self.tool_calls.append(call_record)
+
+        # Update tool statistics
+        if tool_name not in self.tool_stats:
+            self.tool_stats[tool_name] = {
+                'total_calls': 0,
+                'successful_calls': 0,
+                'failed_calls': 0,
+                'total_execution_time': 0,
+                'avg_execution_time': 0,
+                'first_used': call_record['timestamp'],
+                'last_used': call_record['timestamp']
+            }
+
+        stats = self.tool_stats[tool_name]
+        stats['total_calls'] += 1
+        stats['total_execution_time'] += execution_time
+        stats['avg_execution_time'] = stats['total_execution_time'] / stats['total_calls']
+        stats['last_used'] = call_record['timestamp']
+
+        if call_record['success']:
+            stats['successful_calls'] += 1
+        else:
+            stats['failed_calls'] += 1
+
+    def _summarize_result(self, result: Any) -> str:
+        """Create a brief summary of the result"""
+        if isinstance(result, dict):
+            if 'error' in result:
+                return f"Error: {str(result['error'])[:100]}"
+            elif 'orders' in result:
+                return f"Found {len(result.get('orders', []))} orders"
+            elif 'total_orders' in result:
+                return f"Analysis: {result.get('total_orders', 0)} orders"
+            else:
+                return f"Dict with {len(result)} keys"
+        elif isinstance(result, list):
+            return f"List with {len(result)} items"
+        elif isinstance(result, str):
+            return result[:100] + ('...' if len(result) > 100 else '')
+        else:
+            return str(result)[:100]
+
+    def _is_error_result(self, result: Any) -> bool:
+        """Check if result indicates an error"""
+        if isinstance(result, dict) and 'error' in result:
+            return True
+        if isinstance(result, str) and any(error_word in result.lower()
+                                           for error_word in ['error', 'failed', 'not found']):
+            return True
+        return False
+
+    def _infer_caller_context(self) -> str:
+        """Infer the context of who called the tool"""
+        import inspect
+
+        for frame_info in inspect.stack():
+            function_name = frame_info.function
+            if 'scenario' in function_name.lower():
+                return f"Predefined scenario: {function_name}"
+            elif function_name in ['run_query', 'custom_query']:
+                return "Custom user query"
+            elif 'decompose' in function_name.lower():
+                return "Query decomposition system"
+
+        return "Unknown context"
+
+    def get_comprehensive_report(self) -> Dict[str, Any]:
+        """Generate comprehensive tool usage report"""
+        total_calls = len(self.tool_calls)
+        successful_calls = sum(1 for call in self.tool_calls if call['success'])
+        session_duration = (datetime.now() - self.session_start).total_seconds()
+
+        # Most used tools
+        tool_usage_ranking = sorted(
+            [(name, stats['total_calls']) for name, stats in self.tool_stats.items()],
+            key=lambda x: x[1], reverse=True
+        )
+
+        # Recent activity
+        recent_calls = self.tool_calls[-10:] if self.tool_calls else []
+
+        # Performance analysis
+        performance_data = {}
+        for tool_name, stats in self.tool_stats.items():
+            performance_data[tool_name] = {
+                'efficiency_score': (stats['successful_calls'] / stats['total_calls'] * 100) if stats['total_calls'] > 0 else 0,
+                'speed_category': 'Fast' if stats['avg_execution_time'] < 0.5 else 'Medium' if stats['avg_execution_time'] < 2.0 else 'Slow',
+                'usage_frequency': stats['total_calls'] / session_duration * 60 if session_duration > 0 else 0  # calls per minute
+            }
+
+        return {
+            'session_summary': {
+                'session_start': self.session_start,
+                'session_duration_minutes': session_duration / 60,
+                'total_tool_calls': total_calls,
+                'successful_calls': successful_calls,
+                'success_rate': (successful_calls / total_calls * 100) if total_calls > 0 else 0,
+                'unique_tools_used': len(self.tool_stats),
+                'calls_per_minute': total_calls / (session_duration / 60) if session_duration > 0 else 0
+            },
+            'tool_ranking': tool_usage_ranking,
+            'tool_statistics': self.tool_stats,
+            'performance_analysis': performance_data,
+            'recent_activity': recent_calls,
+            'detailed_call_history': self.tool_calls
+        }
+
+    def clear_history(self):
+        """Clear all tool usage history"""
+        self.tool_calls.clear()
+        self.tool_stats.clear()
+        self.session_start = datetime.now()
+
+# Global tool usage tracker
+tool_tracker = ToolUsageTracker()
 
 
 # Circuit Breaker Pattern (ADD AFTER cached_query)
@@ -657,16 +976,59 @@ class AsyncCustomerServiceTools:
         self.executor.shutdown(wait=True)
 
 
+# Enhanced CustomerServiceTools with tracking
 class CustomerServiceTools:
-    """Enhanced customer service tool functions with sophisticated analytics"""
+    """Enhanced customer service tool functions with usage tracking"""
 
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
         self._cache = {}  # Simple caching for performance
-        logger.info("CustomerServiceTools initialized with enhanced caching")
+        logger.info("CustomerServiceTools initialized with enhanced tracking")
 
-    # ============= BASIC TOOLS (Keep existing) =============
-    @cached_query(ttl_seconds=600)  # Cache for 10 minutes
+    # Decorator to track tool usage
+    def track_tool_usage(self, reasoning: str = None):
+        """Decorator to automatically track tool usage"""
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                start_time = time.time()
+                tool_name = func.__name__
+
+                try:
+                    result = func(*args, **kwargs)
+                    execution_time = time.time() - start_time
+
+                    # Record successful tool call
+                    tool_tracker.record_tool_call(
+                        tool_name=tool_name,
+                        input_data=args[1:] + tuple(kwargs.values()) if args else kwargs,  # Skip 'self'
+                        result=result,
+                        execution_time=execution_time,
+                        reasoning=reasoning or f"Standard {tool_name} operation"
+                    )
+
+                    return result
+
+                except Exception as e:
+                    execution_time = time.time() - start_time
+                    error_result = {"error": str(e)}
+
+                    # Record failed tool call
+                    tool_tracker.record_tool_call(
+                        tool_name=tool_name,
+                        input_data=args[1:] + tuple(kwargs.values()) if args else kwargs,
+                        result=error_result,
+                        execution_time=execution_time,
+                        reasoning=f"Failed {tool_name} operation: {str(e)}"
+                    )
+
+                    return error_result
+
+            return wrapper
+        return decorator
+
+    @cached_query(ttl_seconds=600)
+    @track_tool_usage("Retrieve items for order to help with return policy or order verification")
     def get_order_items(self, order_id: int) -> List[str]:
         """Given an order ID, returns the list of items purchased for that order"""
         query = """
@@ -678,27 +1040,30 @@ class CustomerServiceTools:
         results = self.db.execute_query(query, (order_id,))
         return [item[0] for item in results] if results else []
 
+    @track_tool_usage("Get delivery date to calculate return policy deadlines or track shipment status")
     def get_delivery_date(self, order_id: int) -> str:
         """Given an order ID, returns the delivery date for that order"""
         query = """
                 SELECT DATE_FORMAT(delivery_date, '%d-%b')
                 FROM orders
-                WHERE order_id = %s \
+                WHERE order_id = %s
                 """
         results = self.db.execute_query(query, (order_id,))
         return results[0][0] if results else ""
 
+    @track_tool_usage("Look up return policy to inform customer of return window and procedures")
     def get_item_return_days(self, item: str) -> int:
         """Given an item name, returns the return policy in days"""
         query = """
                 SELECT return_days
                 FROM products
-                WHERE product_name LIKE %s LIMIT 1 \
+                WHERE product_name LIKE %s LIMIT 1
                 """
         results = self.db.execute_query(query, (f"%{item}%",))
         return results[0][0] if results else 45  # Default 45 days
 
-    @cached_query(ttl_seconds=300)  # Cache for 5 minutes
+    @cached_query(ttl_seconds=300)
+    @track_tool_usage("Get comprehensive order information for customer service inquiries")
     def get_order_details(self, order_id: int) -> Dict[str, Any]:
         """Get comprehensive order details with caching"""
         if isinstance(order_id, dict):
@@ -739,19 +1104,21 @@ class CustomerServiceTools:
             }
         return {"error": f"Order {order_id} not found"}
 
+    @track_tool_usage("Search customer order history for comprehensive service analysis")
     def search_orders_by_customer(self, email: str) -> List[Dict]:
         """Search orders by customer email"""
         query = """
                 SELECT o.order_id, o.order_date, o.status, o.total_amount
                 FROM orders o
                          JOIN customers c ON o.customer_id = c.customer_id
-                WHERE c.email LIKE %s \
+                WHERE c.email LIKE %s
                 """
         results = self.db.execute_query(query, (f"%{email}%",))
         return [{'order_id': row[0], 'order_date': row[1], 'status': row[2], 'total_amount': row[3]}
                 for row in results]
 
     # ============= ADD THESE NEW ADVANCED TOOLS =============
+    @track_tool_usage("Perform comprehensive customer analysis to identify patterns and issues")
     def analyze_customer_orders_comprehensive(self, customer_email: str) -> Dict[str, Any]:
         """Comprehensive analysis of all customer orders with return eligibility"""
         query = """
@@ -1225,7 +1592,7 @@ class CustomerServiceTools:
 
 
 class QueryDecomposer:
-    """Intelligent query decomposition for complex customer service queries"""
+    """Intelligent query decomposition for complex customer service queries - CLEANED VERSION"""
 
     def __init__(self, agent_runner):
         self.agent = agent_runner
@@ -1299,26 +1666,39 @@ class QueryDecomposer:
         }
 
     def decompose_query(self, query: str) -> List[Dict[str, str]]:
-        """Break down complex query into manageable subgoals"""
+        """Break down complex query into manageable subgoals (5-10 subgoals)"""
         assessment = self.assess_query_complexity(query)
 
         if not assessment['requires_decomposition']:
-            return [{'subgoal': query, 'type': 'simple', 'priority': 1}]
+            # Force minimum decomposition even for simple queries
+            return self._force_minimum_decomposition(query)
 
-        # Use LLM to intelligently decompose the query
+        # MODIFIED: Updated prompt for 5-10 subgoals
         decomposition_prompt = f"""
-        Break down this complex customer service query into 3-5 simple, specific subgoals that can be executed sequentially.
-        Each subgoal should be actionable and focused on a single task.
+        Break down this complex customer service query into 5-10 specific, actionable subgoals that can be executed sequentially.
+        Each subgoal should be focused on a single task and specific enough to be executed by one tool call.
+        
+        REQUIREMENTS:
+        - Minimum 5 subgoals (even for simpler queries)
+        - Maximum 10 subgoals (break complex tasks into smaller steps)
+        - Each subgoal should be actionable and specific
+        - Arrange in logical execution order
         
         Original Query: "{query}"
         
         Format your response as a numbered list of subgoals:
-        1. [Specific action with clear parameters]
-        2. [Next logical step]
-        3. [Analysis or calculation step]
-        4. [Final synthesis or recommendation]
+        1. [First specific data collection step]
+        2. [Second data collection step]
+        3. [Third data collection or validation step]
+        4. [First analysis step]
+        5. [Second analysis step]
+        6. [Additional analysis if needed]
+        7. [Synthesis or comparison step]
+        8. [Recommendation generation]
+        9. [Additional recommendations if complex]
+        10. [Final summary or action plan]
         
-        Make each subgoal specific enough to be executed by a single tool call.
+        Adjust the number between 5-10 based on query complexity, but ensure each step is meaningful and necessary.
         """
 
         try:
@@ -1329,11 +1709,192 @@ class QueryDecomposer:
             # Parse the response into subgoals
             subgoals = self._parse_decomposition_response(str(decomposition_response))
 
+            # ADDED: Enforce 5-10 subgoal range
+            subgoals = self._enforce_subgoal_range(subgoals, query)
+
             return subgoals
 
         except Exception as e:
             print(f"⚠️  Decomposition failed, using pattern-based fallback: {e}")
-            return self._pattern_based_decomposition(query, assessment)
+            return self._pattern_based_decomposition_extended(query, assessment)
+
+    def _force_minimum_decomposition(self, query: str) -> List[Dict[str, str]]:
+        """Force even simple queries into minimum 5 subgoals"""
+        return [
+            {'subgoal': f'Identify the primary entities mentioned in the query: "{query}"', 'type': 'data_collection', 'priority': 1},
+            {'subgoal': 'Collect detailed information for the identified entities', 'type': 'data_collection', 'priority': 2},
+            {'subgoal': 'Validate and cross-reference the collected data', 'type': 'data_collection', 'priority': 3},
+            {'subgoal': 'Analyze the data to extract key insights and patterns', 'type': 'analysis', 'priority': 4},
+            {'subgoal': 'Generate comprehensive response with actionable recommendations', 'type': 'synthesis', 'priority': 5}
+        ]
+
+    def _enforce_subgoal_range(self, subgoals: List[Dict], original_query: str) -> List[Dict]:
+        """Ensure subgoals are between 5-10"""
+
+        if len(subgoals) < 5:
+            print(f"⚠️  Only {len(subgoals)} subgoals generated, expanding to minimum 5...")
+            return self._expand_subgoals(subgoals, original_query, target_count=5)
+
+        elif len(subgoals) > 10:
+            print(f"⚠️  {len(subgoals)} subgoals generated, condensing to maximum 10...")
+            return self._condense_subgoals(subgoals, target_count=10)
+
+        else:
+            print(f"✅ {len(subgoals)} subgoals generated (within 5-10 range)")
+            return subgoals
+
+    def _expand_subgoals(self, subgoals: List[Dict], query: str, target_count: int) -> List[Dict]:
+        """Expand subgoals to reach minimum count"""
+        expanded = subgoals.copy()
+
+        # Add data validation steps
+        if len(expanded) < target_count:
+            expanded.insert(1, {
+                'subgoal': 'Validate input parameters and check data availability',
+                'type': 'data_collection',
+                'priority': len(expanded) + 1
+            })
+
+        # Add cross-reference step
+        if len(expanded) < target_count:
+            expanded.insert(-1, {
+                'subgoal': 'Cross-reference findings with related data sources',
+                'type': 'analysis',
+                'priority': len(expanded) + 1
+            })
+
+        # Add quality check step
+        if len(expanded) < target_count:
+            expanded.insert(-1, {
+                'subgoal': 'Perform quality check on analysis results',
+                'type': 'analysis',
+                'priority': len(expanded) + 1
+            })
+
+        # Add alternative solutions step
+        if len(expanded) < target_count:
+            expanded.insert(-1, {
+                'subgoal': 'Generate alternative solutions or recommendations',
+                'type': 'synthesis',
+                'priority': len(expanded) + 1
+            })
+
+        # Add final verification step
+        if len(expanded) < target_count:
+            expanded.append({
+                'subgoal': 'Verify all recommendations align with business policies',
+                'type': 'synthesis',
+                'priority': len(expanded) + 1
+            })
+
+        # Update priorities
+        for i, subgoal in enumerate(expanded):
+            subgoal['priority'] = i + 1
+
+        return expanded
+
+    def _condense_subgoals(self, subgoals: List[Dict], target_count: int) -> List[Dict]:
+        """Condense subgoals to maximum count by combining similar ones"""
+        if len(subgoals) <= target_count:
+            return subgoals
+
+        # Group by type
+        data_collection = [s for s in subgoals if s['type'] == 'data_collection']
+        analysis = [s for s in subgoals if s['type'] == 'analysis']
+        synthesis = [s for s in subgoals if s['type'] == 'synthesis']
+
+        condensed = []
+
+        # Keep first 3-4 data collection steps
+        if len(data_collection) > 4:
+            condensed.extend(data_collection[:2])
+            # Combine remaining data collection
+            combined_data = {
+                'subgoal': f"Complete additional data collection: {'; '.join([s['subgoal'][:50] + '...' for s in data_collection[2:]])}",
+                'type': 'data_collection',
+                'priority': 3
+            }
+            condensed.append(combined_data)
+        else:
+            condensed.extend(data_collection)
+
+        # Keep first 3-4 analysis steps
+        remaining_slots = target_count - len(condensed) - min(2, len(synthesis))
+        analysis_to_keep = min(remaining_slots, len(analysis))
+
+        if analysis_to_keep < len(analysis):
+            condensed.extend(analysis[:analysis_to_keep-1])
+            # Combine remaining analysis
+            combined_analysis = {
+                'subgoal': f"Complete comprehensive analysis including: {'; '.join([s['subgoal'][:40] + '...' for s in analysis[analysis_to_keep-1:]])}",
+                'type': 'analysis',
+                'priority': len(condensed) + 1
+            }
+            condensed.append(combined_analysis)
+        else:
+            condensed.extend(analysis)
+
+        # Keep final synthesis steps
+        final_synthesis_count = min(2, len(synthesis), target_count - len(condensed))
+        condensed.extend(synthesis[:final_synthesis_count])
+
+        # Update priorities
+        for i, subgoal in enumerate(condensed):
+            subgoal['priority'] = i + 1
+
+        return condensed[:target_count]
+
+    def _pattern_based_decomposition_extended(self, query: str, assessment: Dict) -> List[Dict[str, str]]:
+        """Extended pattern-based decomposition with 5-10 subgoals"""
+        subgoals = []
+
+        # Multi-customer pattern (7 subgoals)
+        if 'multi_customer' in assessment['detected_patterns']:
+            subgoals.extend([
+                {'subgoal': 'Parse and validate customer identifiers from the query', 'type': 'data_collection', 'priority': 1},
+                {'subgoal': 'Retrieve basic customer information and contact details', 'type': 'data_collection', 'priority': 2},
+                {'subgoal': 'Get comprehensive order history for each customer', 'type': 'data_collection', 'priority': 3},
+                {'subgoal': 'Analyze order patterns and customer behavior individually', 'type': 'analysis', 'priority': 4},
+                {'subgoal': 'Compare customers and identify common patterns or issues', 'type': 'analysis', 'priority': 5},
+                {'subgoal': 'Generate individual recommendations for each customer', 'type': 'synthesis', 'priority': 6},
+                {'subgoal': 'Create summary report with actionable next steps', 'type': 'synthesis', 'priority': 7}
+            ])
+
+        # Predictive analysis pattern (8 subgoals)
+        elif 'predictive_analysis' in assessment['detected_patterns']:
+            subgoals.extend([
+                {'subgoal': 'Collect historical data relevant to prediction requirements', 'type': 'data_collection', 'priority': 1},
+                {'subgoal': 'Gather current state data and recent trends', 'type': 'data_collection', 'priority': 2},
+                {'subgoal': 'Validate data quality and identify any gaps', 'type': 'data_collection', 'priority': 3},
+                {'subgoal': 'Identify patterns and trends in historical data', 'type': 'analysis', 'priority': 4},
+                {'subgoal': 'Assess current risk factors and warning indicators', 'type': 'analysis', 'priority': 5},
+                {'subgoal': 'Generate predictions based on identified patterns', 'type': 'analysis', 'priority': 6},
+                {'subgoal': 'Develop proactive recommendations and action plans', 'type': 'synthesis', 'priority': 7},
+                {'subgoal': 'Create monitoring strategy for ongoing risk management', 'type': 'synthesis', 'priority': 8}
+            ])
+
+        # Business impact pattern (6 subgoals)
+        elif 'business_impact' in assessment['detected_patterns']:
+            subgoals.extend([
+                {'subgoal': 'Identify and quantify the business metrics involved', 'type': 'data_collection', 'priority': 1},
+                {'subgoal': 'Collect financial and operational data for impact analysis', 'type': 'data_collection', 'priority': 2},
+                {'subgoal': 'Calculate direct financial impact and costs', 'type': 'analysis', 'priority': 3},
+                {'subgoal': 'Assess indirect business risks and operational implications', 'type': 'analysis', 'priority': 4},
+                {'subgoal': 'Develop strategies to minimize negative impact', 'type': 'synthesis', 'priority': 5},
+                {'subgoal': 'Create implementation plan with timeline and resources', 'type': 'synthesis', 'priority': 6}
+            ])
+
+        # Default extended decomposition (5 subgoals minimum)
+        else:
+            subgoals = [
+                {'subgoal': 'Identify and extract key entities and requirements from query', 'type': 'data_collection', 'priority': 1},
+                {'subgoal': 'Collect comprehensive data for all identified entities', 'type': 'data_collection', 'priority': 2},
+                {'subgoal': 'Validate data completeness and cross-reference information', 'type': 'data_collection', 'priority': 3},
+                {'subgoal': 'Analyze collected data and identify key insights', 'type': 'analysis', 'priority': 4},
+                {'subgoal': 'Generate comprehensive response with actionable recommendations', 'type': 'synthesis', 'priority': 5}
+            ]
+
+        return subgoals
 
     def _parse_decomposition_response(self, response: str) -> List[Dict[str, str]]:
         """Parse LLM response into structured subgoals"""
@@ -1345,7 +1906,7 @@ class QueryDecomposer:
             if line and (line[0].isdigit() or line.startswith('-') or line.startswith('•')):
                 # Clean up the line
                 clean_line = line
-                for prefix in ['1.', '2.', '3.', '4.', '5.', '-', '•']:
+                for prefix in ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.', '-', '•']:
                     if clean_line.startswith(prefix):
                         clean_line = clean_line[len(prefix):].strip()
                         break
@@ -1360,61 +1921,18 @@ class QueryDecomposer:
 
         return subgoals if subgoals else [{'subgoal': response, 'type': 'simple', 'priority': 1}]
 
-    def _pattern_based_decomposition(self, query: str, assessment: Dict) -> List[Dict[str, str]]:
-        """Fallback pattern-based decomposition when LLM fails"""
-        subgoals = []
-
-        # Multi-customer pattern
-        if 'multi_customer' in assessment['detected_patterns']:
-            subgoals.extend([
-                {'subgoal': 'Identify and list all customers mentioned in the query', 'type': 'data_collection',
-                 'priority': 1},
-                {'subgoal': 'Get detailed order information for each customer', 'type': 'data_collection',
-                 'priority': 2},
-                {'subgoal': 'Analyze patterns and issues across the customer group', 'type': 'analysis', 'priority': 3}
-            ])
-
-        # Predictive analysis pattern
-        if 'predictive_analysis' in assessment['detected_patterns']:
-            subgoals.extend([
-                {'subgoal': 'Analyze recent order and customer behavior patterns', 'type': 'data_collection',
-                 'priority': 1},
-                {'subgoal': 'Identify risk factors and potential issues', 'type': 'analysis', 'priority': 2},
-                {'subgoal': 'Generate proactive recommendations and action plans', 'type': 'synthesis', 'priority': 3}
-            ])
-
-        # Business impact pattern
-        if 'business_impact' in assessment['detected_patterns']:
-            subgoals.extend([
-                {'subgoal': 'Calculate financial metrics and business impact', 'type': 'analysis', 'priority': 1},
-                {'subgoal': 'Assess risk levels and operational implications', 'type': 'analysis', 'priority': 2},
-                {'subgoal': 'Recommend strategies to minimize impact', 'type': 'synthesis', 'priority': 3}
-            ])
-
-        # Default decomposition if no specific patterns
-        if not subgoals:
-            subgoals = [
-                {'subgoal': 'Collect relevant data based on the query requirements', 'type': 'data_collection',
-                 'priority': 1},
-                {'subgoal': 'Analyze the collected data and identify key insights', 'type': 'analysis', 'priority': 2},
-                {'subgoal': 'Provide comprehensive response with recommendations', 'type': 'synthesis', 'priority': 3}
-            ]
-
-        return subgoals
-
     def execute_decomposed_query(self, query: str) -> str:
-        """Execute query with automatic decomposition if needed"""
+        """Execute query with automatic decomposition - SIMPLIFIED VERSION"""
         print(f"🔍 Analyzing query complexity...")
 
         assessment = self.assess_query_complexity(query)
 
         if not assessment['requires_decomposition']:
-            print("✅ Simple query detected, executing directly...")
-            return self._execute_simple_query(query)
+            print("✅ Simple query detected, but enforcing minimum decomposition...")
 
-        print(f"🧩 Complex query detected (score: {assessment['complexity_score']})")
+        print(f"🧩 Query complexity score: {assessment['complexity_score']}")
         print(f"📋 Patterns found: {', '.join(assessment['detected_patterns'])}")
-        print("🔄 Breaking down into subgoals...")
+        print("🔄 Breaking down into 5-10 subgoals...")
 
         subgoals = self.decompose_query(query)
 
@@ -1436,6 +1954,7 @@ class QueryDecomposer:
                 contextual_query = f"Based on previous analysis: {' '.join(context[-2:])}. Now: {subgoal['subgoal']}"
 
             try:
+                # SIMPLIFIED: Use agent's method directly
                 result = self._execute_simple_query(contextual_query)
                 results.append({
                     'subgoal': subgoal['subgoal'],
@@ -1452,54 +1971,48 @@ class QueryDecomposer:
                     'type': subgoal['type']
                 })
 
-        # Synthesize final response
+        # SIMPLIFIED: Use agent's synthesis method directly
         return self._synthesize_results(query, results)
 
     def _execute_simple_query(self, query: str) -> str:
-        """Execute a simple query using the agent"""
+        """Execute a simple query using the agent - SIMPLIFIED"""
         try:
-            response = self.agent.query(query)
-            return str(response)
+            # Use agent's method if available, otherwise fallback
+            if hasattr(self.agent, '_execute_simple_query'):
+                return self.agent._execute_simple_query(query)
+            else:
+                response = self.agent.query(query)
+                return str(response)
         except Exception as e:
             return f"Query execution failed: {e}"
 
     def _synthesize_results(self, original_query: str, results: List[Dict]) -> str:
-        """Combine results from subgoals into comprehensive response"""
-        print(f"\n🔄 Synthesizing results from {len(results)} subgoals...")
+        """Synthesize results - SIMPLIFIED"""
+        try:
+            # Use agent's method if available, otherwise fallback
+            if hasattr(self.agent, '_synthesize_results'):
+                return self.agent._synthesize_results(original_query, results)
+            else:
+                return self._simple_fallback_synthesis(original_query, results)
+        except Exception as e:
+            return self._simple_fallback_synthesis(original_query, results)
 
-        # Separate results by type
-        data_results = [r for r in results if r['type'] == 'data_collection']
-        analysis_results = [r for r in results if r['type'] == 'analysis']
-        synthesis_results = [r for r in results if r['type'] == 'synthesis']
-
-        # Build comprehensive response
+    def _simple_fallback_synthesis(self, original_query: str, results: List[Dict]) -> str:
+        """Simple fallback synthesis - MINIMAL VERSION"""
         final_response = f"## Comprehensive Analysis for: {original_query}\n\n"
 
-        if data_results:
-            final_response += "### 📊 Data Collection Results:\n"
-            for i, result in enumerate(data_results, 1):
-                final_response += f"{i}. **{result['subgoal']}**\n{result['result']}\n\n"
+        for i, result in enumerate(results, 1):
+            final_response += f"### Step {i}: {result['subgoal']}\n"
+            final_response += f"**Type:** {result['type']}\n"
+            final_response += f"**Result:** {result['result']}\n\n"
 
-        if analysis_results:
-            final_response += "### 🔍 Analysis Results:\n"
-            for i, result in enumerate(analysis_results, 1):
-                final_response += f"{i}. **{result['subgoal']}**\n{result['result']}\n\n"
-
-        if synthesis_results:
-            final_response += "### 💡 Recommendations & Conclusions:\n"
-            for i, result in enumerate(synthesis_results, 1):
-                final_response += f"{i}. **{result['subgoal']}**\n{result['result']}\n\n"
-
-        # Add summary
-        final_response += "### 📋 Executive Summary:\n"
-        final_response += f"Successfully analyzed complex query through {len(results)} focused subgoals. "
-        final_response += "Each aspect was thoroughly examined to provide comprehensive insights and actionable recommendations."
+        final_response += f"### Summary\n"
+        final_response += f"Completed analysis of {len(results)} subgoals."
 
         return final_response
 
-
 class CustomerServiceAgent:
-    """Main AI Agent class with hybrid sync/async capabilities"""
+    """Main AI Agent class with comprehensive tool usage tracking"""
 
     def __init__(self):
         self.db_manager = DatabaseManager()
@@ -1507,8 +2020,15 @@ class CustomerServiceAgent:
         self.agent = None
         self.support_index = None
         self.query_decomposer = None
-        self.sync_tools = None  # Regular tools
-        self.async_tools = None  # Async tools for parallel operations
+        self.sync_tools = None
+        self.async_tools = None
+
+        # ADD THESE LINES for call graph tracking:
+        self.execution_tracker = EnhancedQueryExecutionTracker()
+        global execution_tracker
+        execution_tracker = self.execution_tracker  # Use instance tracker
+
+        print("🎯 Enhanced Customer Service Agent with Call Graph Tracking initialized")
 
     def setup_database(self):
         """Setup database connection"""
@@ -1774,7 +2294,7 @@ class CustomerServiceAgent:
         import os
 
         print("\n🔍 Checking policy_files directory...")
-        policy_dir = "policy_files"
+        policy_dir = "../src/policy_files"
 
         if not os.path.exists(policy_dir):
             print(f"❌ Directory '{policy_dir}' not found!")
@@ -1841,7 +2361,7 @@ class CustomerServiceAgent:
         """Allow user to select specific files"""
         import os
 
-        policy_dir = "policy_files"
+        policy_dir = "../src/policy_files"
 
         if not os.path.exists(policy_dir):
             print(f"❌ Directory '{policy_dir}' not found!")
@@ -2064,17 +2584,22 @@ class CustomerServiceAgent:
             return False
 
     def create_tools(self):
-        """Create enhanced tools for the agent with hybrid sync/async capabilities"""
+        """Create enhanced tools for the agent with call graph tracking"""
         if not LLAMAINDEX_AVAILABLE:
             return False
 
-        print("🛠️  Creating enhanced agent tools...")
+        print("🛠️  Creating enhanced agent tools with call graph tracking...")
         try:
             # Create regular database-connected tools
             self.sync_tools = CustomerServiceTools(self.db_manager)
 
+            # ADD THIS LINE: Wrap tools with tracking
+            print("📊 Wrapping tools with call graph tracking...")
+            self.sync_tools = TrackedCustomerServiceTools(self.sync_tools)
+
             # Create async tools for parallel operations
             self.async_tools = AsyncCustomerServiceTools(self.db_manager, self.sync_tools)
+
 
             # Specialized return policy tool
             def get_order_return_policy(order_id: int) -> str:
@@ -2242,11 +2767,51 @@ class CustomerServiceAgent:
             print("   ⚡ Parallel tools: 1 (for multi-order scenarios)")
             print("   🚀 Advanced analytics: 6 (comprehensive analysis)")
             print("   📚 Support search: 1 (policy and FAQ)")
+            print(f"✅ Created {len(self.tools)} enhanced tools with call graph tracking!")
             return True
 
         except Exception as e:
             print(f"❌ Tool creation failed: {e}")
             return False
+
+    # def create_agent(self):
+    #     """Create the enhanced AI agent with configuration from .env"""
+    #     if not LLAMAINDEX_AVAILABLE or not self.tools:
+    #         return False
+    #
+    #     print("🤖 Creating enhanced AI agent with environment configuration...")
+    #     logger.info("Creating AI agent with configurable parameters")
+    #
+    #     try:
+    #         # Setup the Agent worker with configurable settings
+    #         agent_worker = ReActAgentWorker.from_tools(
+    #             self.tools,
+    #             llm=Settings.llm,
+    #             verbose=config.agent_verbose,                    # From .env
+    #             max_iterations=config.max_iterations,            # From .env
+    #             allow_parallel_tool_calls=config.agent_allow_parallel_tool_calls  # From .env
+    #         )
+    #
+    #         # Create agent runner with configurable settings
+    #         self.agent = AgentRunner(
+    #             agent_worker,
+    #             memory=None if not config.agent_memory_enabled else "buffer",  # From .env
+    #             verbose=config.agent_verbose                     # From .env
+    #         )
+    #
+    #         print("✅ Enhanced AI agent created successfully!")
+    #         print(f"   🔧 Max iterations: {config.max_iterations} (configurable in .env)")
+    #         print(f"   🧠 Verbose mode: {'Enabled' if config.agent_verbose else 'Disabled'}")
+    #         print(f"   📝 Memory: {'Enabled' if config.agent_memory_enabled else 'Disabled'}")
+    #         print(f"   ⚡ Parallel tools: {'Enabled' if config.agent_allow_parallel_tool_calls else 'Disabled'}")
+    #
+    #         logger.info(f"AI agent created with max_iterations={config.max_iterations}, verbose={config.agent_verbose}")
+    #         return True
+    #
+    #     except Exception as e:
+    #         print(f"❌ Agent creation failed: {e}")
+    #         logger.error(f"Agent creation failed: {e}")
+    #         return False
 
     def create_agent(self):
         """Create the enhanced AI agent with configuration from .env"""
@@ -2266,17 +2831,34 @@ class CustomerServiceAgent:
                 allow_parallel_tool_calls=config.agent_allow_parallel_tool_calls  # From .env
             )
 
+            # Create memory object if enabled
+            memory = None
+            if config.agent_memory_enabled:
+                try:
+                    from llama_index.core.memory import ChatMemoryBuffer
+                    memory = ChatMemoryBuffer.from_defaults(
+                        token_limit=2000,  # Reasonable token limit for memory
+                        chat_store=None    # Use default in-memory store
+                    )
+                    logger.info("Agent memory enabled with ChatMemoryBuffer")
+                except ImportError:
+                    logger.warning("ChatMemoryBuffer not available, disabling memory")
+                    memory = None
+                except Exception as e:
+                    logger.warning(f"Failed to create memory buffer: {e}, disabling memory")
+                    memory = None
+
             # Create agent runner with configurable settings
             self.agent = AgentRunner(
                 agent_worker,
-                memory=None if not config.agent_memory_enabled else "buffer",  # From .env
-                verbose=config.agent_verbose                     # From .env
+                memory=memory,  # Now properly using memory object or None
+                verbose=config.agent_verbose
             )
 
             print("✅ Enhanced AI agent created successfully!")
             print(f"   🔧 Max iterations: {config.max_iterations} (configurable in .env)")
             print(f"   🧠 Verbose mode: {'Enabled' if config.agent_verbose else 'Disabled'}")
-            print(f"   📝 Memory: {'Enabled' if config.agent_memory_enabled else 'Disabled'}")
+            print(f"   📝 Memory: {'Enabled' if memory is not None else 'Disabled'}")
             print(f"   ⚡ Parallel tools: {'Enabled' if config.agent_allow_parallel_tool_calls else 'Disabled'}")
 
             logger.info(f"AI agent created with max_iterations={config.max_iterations}, verbose={config.agent_verbose}")
@@ -2532,13 +3114,13 @@ class CustomerServiceAgent:
                     break
 
     def run_custom_query(self):
-        """Run a custom user query"""
+        """Enhanced custom query with call graph tracking"""
         if not self.agent:
             print("❌ Agent not initialized!")
             return
 
-        print("\n💬 Custom Query Mode")
-        print("=" * 30)
+        print("\n💬 Custom Query Mode with Call Graph Tracking")
+        print("=" * 50)
         print("You can ask questions about:")
         print("- Order details (e.g., 'What items are in order 1001?')")
         print("- Delivery dates (e.g., 'When will order 1002 be delivered?')")
@@ -2548,7 +3130,12 @@ class CustomerServiceAgent:
         print("- Geographic analysis (e.g., 'Orders in Auburn, AL')")
         print("- Predictive analysis (e.g., 'Which customers might have issues?')")
         print("- Any combination of the above")
-        print("\nType 'back' to return to main menu.")
+        print("\n🎯 Each query will generate an interactive call graph showing:")
+        print("   • Thinking processes  • Tool selections  • Database operations")
+        print("   • Cache hits/misses  • Logical reasoning  • Error handling")
+        print("\nSpecial commands:")
+        print("- 'demo cache' - Demonstrate cache behavior")
+        print("- 'back' - Return to main menu")
         print()
 
         while True:
@@ -2556,65 +3143,131 @@ class CustomerServiceAgent:
 
             if query.lower() == 'back':
                 break
+            elif query.lower() == 'demo cache':
+                self.demonstrate_cache_behavior()
+                print("\n" + "-" * 50)
             elif query:
-                self.run_query_with_options(query)
+                # Offer execution options
+                print(f"\n📋 Execution options for: '{query[:60]}{'...' if len(query) > 60 else ''}'")
+                print("1. 🚀 Standard execution (with call graph)")
+                print("2. 📊 Enhanced tracking (detailed tool usage + call graph)")
+                print("3. 🧩 Intelligent decomposition (complex query analysis + call graph)")
+
+                exec_choice = input("Select execution method (1-3, default=1): ").strip() or "1"
+
+                if exec_choice == "1":
+                    self.run_query(query)
+                elif exec_choice == "2":
+                    self.run_query_with_enhanced_tracking(query)
+                elif exec_choice == "3":
+                    if hasattr(self, 'query_decomposer') and self.query_decomposer:
+                        self.run_intelligent_query(query)
+                    else:
+                        print("⚠️  Query decomposer not available, using standard execution")
+                        self.run_query(query)
+
+                print(f"\n💡 View the call graph: Menu option 10 → Latest graph")
                 print("\n" + "-" * 50)
             else:
                 print("❌ Please enter a valid question.")
 
+
     @performance_monitor
     def run_query(self, query: str):
-        """Execute a query using the agent with enhanced error handling"""
+        """Execute a query using the agent with call graph tracking"""
         if not self.agent:
             print("❌ Agent not initialized!")
             return
 
-        try:
-            print(f"🤖 Processing query: '{query}'")
-            print("-" * 50)
+        # Start call graph tracking
+        query_id = self.execution_tracker.track_agent_query_start(query)
 
-            # Add timeout and retry logic
+        try:
+            print(f"🤖 Processing query with call graph tracking: '{query}'")
+            print(f"📊 Tracking ID: {query_id}")
+            print("-" * 70)
+
+            # Track initial agent thinking
+            self.execution_tracker.add_thinking_process(
+                "Received customer query, initializing response process",
+                f"Query length: {len(query)} characters, analyzing requirements"
+            )
+
+            # Track tool availability assessment
+            available_tools = [tool.metadata.name for tool in self.tools] if self.tools else []
+            self.execution_tracker.track_tool_selection_process(available_tools, query)
+
+            # Add timeout and retry logic with tracking
             import signal
 
             def timeout_handler(signum, frame):
+                self.execution_tracker.add_error("Query execution timeout", "timeout")
                 raise TimeoutError("Query execution timeout")
 
-            # Set timeout to 60 seconds
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(60)
 
             try:
+                # Track the main agent execution
+                self.execution_tracker.add_thinking_process(
+                    "Executing main agent query processing",
+                    "Agent will now process the query using available tools and knowledge"
+                )
+
                 response = self.agent.query(query)
                 signal.alarm(0)  # Cancel timeout
+
+                # Track successful completion
+                self.execution_tracker.add_thinking_process(
+                    "Query processing completed successfully",
+                    f"Generated response of {len(str(response))} characters"
+                )
+
+                # Finalize tracking
+                final_response = str(response)
+                self.execution_tracker.finalize_query(final_response, success=True)
 
                 print("\n✅ Agent Response:")
                 print("=" * 30)
                 print(response)
                 print()
 
+                # Show execution summary
+                summary = self.execution_tracker.export_execution_summary()
+                print(f"📊 Execution Summary:")
+                print(f"   Total time: {summary.get('total_execution_time', 0):.2f}s")
+                print(f"   Tool calls: {summary.get('tool_calls', 0)}")
+                print(f"   Cache hits: {summary.get('cache_hits', 0)}")
+                print(f"   Reasoning steps: {summary.get('reasoning_steps', 0)}")
+                print(f"   📈 Call graph saved to: ./generated_callgraphs/")
+
             except TimeoutError:
                 signal.alarm(0)
+                self.execution_tracker.add_error("Query timeout exceeded", "timeout")
+                self.execution_tracker.finalize_query("Query timed out", success=False)
                 print("\n⏰ Query timeout! The query took too long to process.")
-                print("💡 Try simplifying your question or breaking it into parts.")
 
             except Exception as query_error:
                 signal.alarm(0)
+                self.execution_tracker.add_error(str(query_error), "execution_error")
+                self.execution_tracker.finalize_query(f"Query failed: {str(query_error)}", success=False)
                 print(f"\n❌ Query execution error: {query_error}")
 
-                # Try to provide helpful fallback
+                # Provide helpful fallback with tracking
                 if "max iterations" in str(query_error).lower():
+                    self.execution_tracker.add_thinking_process(
+                        "Query complexity exceeded iteration limit",
+                        "The query was too complex and reached the maximum iteration limit"
+                    )
                     print("\n🔄 The query was too complex and reached iteration limit.")
                     print("💡 Suggestions:")
                     print("   • Break down your question into simpler parts")
                     print("   • Ask about specific order IDs or customers")
                     print("   • Try using more specific keywords")
-                elif "tool" in str(query_error).lower():
-                    print("\n🛠️  Tool execution issue detected.")
-                    print("💡 The system might need specific data to answer your question.")
-                    print("   • Ensure order IDs, emails, or product names are correct")
-                    print("   • Try asking about existing orders (1001-1030)")
 
         except Exception as e:
+            self.execution_tracker.add_error(str(e), "critical_error")
+            self.execution_tracker.finalize_query(f"Critical error: {str(e)}", success=False)
             print(f"❌ Critical error during query execution: {e}")
             print("🔧 Please check your database connection and try again.")
 
@@ -2708,57 +3361,126 @@ class CustomerServiceAgent:
             print(f"💾 Memory Usage: {health['memory_usage']}")
 
     def show_performance_metrics(self):
-        """Display performance metrics"""
-        print("\n📈 Performance Metrics")
-        print("=" * 30)
+        """Enhanced performance metrics with tool usage integration"""
+        print("\n📈 Enhanced Performance Metrics")
+        print("=" * 40)
 
+        # Get basic metrics
         metrics = self.get_performance_metrics()
 
-        print(f"🔧 Configuration:")
+        # Add tool usage metrics
+        tool_report = tool_tracker.get_comprehensive_report()
+        cache_stats = cache_manager.get_detailed_stats()
+
+        print(f"🔧 System Configuration:")
         for key, value in metrics.get('config', {}).items():
             print(f"   {key}: {value}")
 
+        print(f"\n📊 Database Performance:")
         if 'database_stats' in metrics:
             stats = metrics['database_stats']
-            print(f"\n📊 Database Statistics:")
             print(f"   Total Queries: {stats['total_queries']}")
-            print(f"   Success Rate: {stats['successful_queries']}/{stats['total_queries']}")
+            print(f"   Success Rate: {stats['successful_queries']}/{stats['total_queries']} ({stats['successful_queries']/stats['total_queries']*100:.1f}%)")
             print(f"   Avg Query Time: {stats['avg_query_time']:.3f}s")
 
-        if 'cache_stats' in metrics:
-            print(f"\n💾 Cache Statistics:")
-            for method, stats in metrics['cache_stats'].items():
-                hit_rate = stats['hits'] / (stats['hits'] + stats['misses']) * 100 if (stats['hits'] + stats['misses']) > 0 else 0
-                print(f"   {method}: {hit_rate:.1f}% hit rate ({stats['hits']} hits, {stats['misses']} misses)")
+        print(f"\n🔧 Tool Usage Performance:")
+        session = tool_report['session_summary']
+        print(f"   Session Duration: {session['session_duration_minutes']:.1f} minutes")
+        print(f"   Total Tool Calls: {session['total_tool_calls']}")
+        print(f"   Tool Success Rate: {session['success_rate']:.1f}%")
+        print(f"   Activity Rate: {session['calls_per_minute']:.1f} calls/minute")
+        print(f"   Unique Tools Used: {session['unique_tools_used']}")
+
+        print(f"\n💾 Cache Performance:")
+        global_cache = cache_stats['global']
+        print(f"   Overall Hit Rate: {global_cache['hit_rate']:.1f}%")
+        print(f"   Cache Hits: {global_cache['cache_hits']}")
+        print(f"   Cache Misses: {global_cache['cache_misses']}")
+        print(f"   Time Saved: ~{global_cache['time_saved']:.1f}s")
 
         if 'memory' in metrics:
             mem = metrics['memory']
             print(f"\n🧠 System Resources:")
-            print(f"   Memory: {mem['rss_mb']:.1f}MB")
-            print(f"   CPU: {mem['cpu_percent']:.1f}%")
-            print(f"   Threads: {mem['num_threads']}")
+            print(f"   Memory Usage: {mem['rss_mb']:.1f}MB")
+            print(f"   CPU Usage: {mem['cpu_percent']:.1f}%")
+            print(f"   Active Threads: {mem['num_threads']}")
+
+        # Performance recommendations
+        print(f"\n💡 Performance Recommendations:")
+
+        if global_cache['hit_rate'] < 50:
+            print(f"   ⚠️  Low cache hit rate ({global_cache['hit_rate']:.1f}%) - Consider longer TTL")
+        elif global_cache['hit_rate'] > 80:
+            print(f"   ✅ Excellent cache performance ({global_cache['hit_rate']:.1f}%)")
+
+        if session['success_rate'] < 95:
+            print(f"   ⚠️  Tool failure rate is high ({100-session['success_rate']:.1f}%) - Check error handling")
+
+        if session['calls_per_minute'] > 10:
+            print(f"   🔥 High activity rate ({session['calls_per_minute']:.1f}/min) - Monitor resource usage")
+
+        # Show top performing tools
+        if tool_report['tool_ranking']:
+            print(f"\n🏆 Top 3 Most Used Tools:")
+            for i, (tool_name, call_count) in enumerate(tool_report['tool_ranking'][:3], 1):
+                perf = tool_report['performance_analysis'][tool_name]
+                print(f"   {i}. {tool_name}: {call_count} calls ({perf['efficiency_score']:.1f}% success)")
 
     def clear_caches(self):
-        """Clear all caches"""
-        print("\n🧹 Clearing Caches...")
+        """Enhanced cache clearing with detailed feedback"""
+        print("\n🧹 Cache Management")
+        print("=" * 30)
 
-        if hasattr(self, 'sync_tools'):
-            cleared = 0
-            for method_name in ['get_order_items', 'get_order_details']:
-                method = getattr(self.sync_tools, method_name, None)
-                if method and hasattr(method, 'clear_cache'):
-                    method.clear_cache()
-                    cleared += 1
-            print(f"✅ Cleared {cleared} method caches")
+        # Show current cache state
+        cache_stats = cache_manager.get_detailed_stats()
+        tool_calls = len(tool_tracker.tool_calls)
 
-        # Force garbage collection
+        print(f"Current cache state:")
+        print(f"   Total cached methods: {len(cache_stats['by_method'])}")
+        print(f"   Total cache entries: {sum(stats['cache_size'] for stats in cache_stats['by_method'].values())}")
+        print(f"   Cache hit rate: {cache_stats['global']['hit_rate']:.1f}%")
+        print(f"   Tool call history: {tool_calls} entries")
+
+        if cache_stats['global']['total_calls'] == 0:
+            print("\n💡 No cache data to clear.")
+            return
+
+        print(f"\n🧹 Clear options:")
+        print(f"1. Clear method caches only")
+        print(f"2. Clear tool usage history only")
+        print(f"3. Clear everything (caches + tool history)")
+        print(f"4. Show cache details first")
+        print(f"5. Cancel")
+
+        choice = input("Select option (1-5): ").strip()
+
+        if choice == '1':
+            cache_manager.clear_all_caches()
+            print("✅ Method caches cleared!")
+
+        elif choice == '2':
+            tool_tracker.clear_history()
+            print("✅ Tool usage history cleared!")
+
+        elif choice == '3':
+            cache_manager.clear_all_caches()
+            tool_tracker.clear_history()
+            print("✅ All caches and tool history cleared!")
+
+        elif choice == '4':
+            self._show_cache_details(cache_stats)
+            return  # Don't clear, just show details
+
+        elif choice == '5':
+            print("❌ Clear operation cancelled")
+            return
+
+        # Force garbage collection after clearing
         if PSUTIL_AVAILABLE:
             mem_before = psutil.Process().memory_info().rss / 1024 / 1024
             gc.collect()
             mem_after = psutil.Process().memory_info().rss / 1024 / 1024
-            print(f"✅ Garbage collection freed {mem_before - mem_after:.1f}MB")
-
-        print("🧹 Cache clearing complete!")
+            print(f"🧠 Garbage collection freed {mem_before - mem_after:.1f}MB")
 
     def reload_configuration(self):
         """Reload configuration from .env file"""
@@ -2783,15 +3505,320 @@ class CustomerServiceAgent:
             print(f"❌ Failed to reload configuration: {e}")
             logger.error(f"Failed to reload configuration: {e}")
 
+    def show_tool_usage_report(self):
+        """Display comprehensive tool usage report - NEW METHOD"""
+        print("\n🔧 Tool Usage Report")
+        print("=" * 60)
+
+        report = tool_tracker.get_comprehensive_report()
+        session = report['session_summary']
+
+        # Session overview
+        print(f"📊 Session Overview:")
+        print(f"   Start Time: {session['session_start'].strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   Duration: {session['session_duration_minutes']:.1f} minutes")
+        print(f"   Total Tool Calls: {session['total_tool_calls']}")
+        print(f"   Success Rate: {session['success_rate']:.1f}%")
+        print(f"   Tools Used: {session['unique_tools_used']}")
+        print(f"   Activity Rate: {session['calls_per_minute']:.1f} calls/minute")
+
+        # Tool ranking
+        if report['tool_ranking']:
+            print(f"\n🏆 Most Used Tools:")
+            for i, (tool_name, call_count) in enumerate(report['tool_ranking'][:10], 1):
+                stats = report['tool_statistics'][tool_name]
+                perf = report['performance_analysis'][tool_name]
+                print(f"   {i:2d}. {tool_name}")
+                print(f"       Calls: {call_count} | Success: {perf['efficiency_score']:.1f}% | Speed: {perf['speed_category']}")
+                print(f"       Avg Time: {stats['avg_execution_time']:.3f}s | Usage: {perf['usage_frequency']:.1f}/min")
+
+        # Recent activity
+        if report['recent_activity']:
+            print(f"\n📋 Recent Tool Activity (Last 10 calls):")
+            for i, call in enumerate(reversed(report['recent_activity']), 1):
+                status = "✅" if call['success'] else "❌"
+                print(f"   {i:2d}. {status} {call['tool_name']} ({call['execution_time']:.3f}s)")
+                print(f"       Input: {call['input_data']}")
+                print(f"       Result: {call['result_summary']}")
+                print(f"       Context: {call['caller_context']}")
+                print(f"       Time: {call['timestamp'].strftime('%H:%M:%S')}")
+                print()
+
+        # Cache performance
+        cache_stats = cache_manager.get_detailed_stats()
+        print(f"\n💾 Cache Performance:")
+        print(f"   Global Hit Rate: {cache_stats['global']['hit_rate']:.1f}%")
+        print(f"   Total Calls: {cache_stats['global']['total_calls']}")
+        print(f"   Cache Hits: {cache_stats['global']['cache_hits']}")
+        print(f"   Time Saved: {cache_stats['global']['time_saved']:.1f}s")
+
+        if cache_stats['by_method']:
+            print(f"\n📈 Cache Performance by Method:")
+            for method, stats in cache_stats['by_method'].items():
+                print(f"   {method}:")
+                print(f"     Hit Rate: {stats['hit_rate']:.1f}% ({stats['cache_hits']}/{stats['total_calls']})")
+                print(f"     Avg Time: {stats['avg_execution_time']:.3f}s | Cache Size: {stats['cache_size']}")
+
+        # Query patterns
+        print(f"\n🔍 Query Pattern Analysis:")
+
+        # Analyze tool usage patterns
+        tool_combinations = {}
+        if len(report['detailed_call_history']) > 1:
+            for i in range(len(report['detailed_call_history']) - 1):
+                current_tool = report['detailed_call_history'][i]['tool_name']
+                next_tool = report['detailed_call_history'][i + 1]['tool_name']
+                combo = f"{current_tool} → {next_tool}"
+                tool_combinations[combo] = tool_combinations.get(combo, 0) + 1
+
+        if tool_combinations:
+            print(f"   Common Tool Sequences:")
+            sorted_combos = sorted(tool_combinations.items(), key=lambda x: x[1], reverse=True)
+            for combo, count in sorted_combos[:5]:
+                print(f"     {combo}: {count} times")
+
+        # Performance insights
+        print(f"\n💡 Performance Insights:")
+
+        slow_tools = [name for name, perf in report['performance_analysis'].items()
+                      if perf['speed_category'] == 'Slow']
+        if slow_tools:
+            print(f"   ⚠️  Slow tools detected: {', '.join(slow_tools)}")
+            print(f"      Consider optimizing these tools or checking database performance")
+
+        high_usage_tools = [name for name, perf in report['performance_analysis'].items()
+                            if perf['usage_frequency'] > 5]  # More than 5 calls per minute
+        if high_usage_tools:
+            print(f"   🔥 High-usage tools: {', '.join(high_usage_tools)}")
+            print(f"      These tools are frequently used - ensure they're optimized")
+
+        low_success_tools = [name for name, perf in report['performance_analysis'].items()
+                             if perf['efficiency_score'] < 80]
+        if low_success_tools:
+            print(f"   ❌ Tools with low success rate: {', '.join(low_success_tools)}")
+            print(f"      These tools often fail - check error handling and input validation")
+
+        print(f"\n📝 Recommendations:")
+        print(f"   • Cache hit rate target: >70% (current: {cache_stats['global']['hit_rate']:.1f}%)")
+        print(f"   • Tool success rate target: >95% (current: {session['success_rate']:.1f}%)")
+        print(f"   • Consider optimizing tools with >2s average execution time")
+
+        # Option to show detailed call history
+        print(f"\n🔧 Options:")
+        print(f"   1. Show detailed call history")
+        print(f"   2. Show cache details")
+        print(f"   3. Export report to file")
+        print(f"   4. Clear tool usage history")
+        print(f"   5. Return to main menu")
+
+        choice = input("Select option (1-5): ").strip()
+
+        if choice == '1':
+            self._show_detailed_call_history(report['detailed_call_history'])
+        elif choice == '2':
+            self._show_cache_details(cache_stats)
+        elif choice == '3':
+            self._export_tool_report(report)
+        elif choice == '4':
+            self._clear_tool_history()
+        # Option 5 or other: return to main menu
+
+    def _show_detailed_call_history(self, call_history: List[Dict]):
+        """Show detailed call history"""
+        print(f"\n📋 Detailed Call History ({len(call_history)} calls)")
+        print("=" * 80)
+
+        for i, call in enumerate(call_history, 1):
+            status = "✅ SUCCESS" if call['success'] else "❌ FAILED"
+            print(f"\n{i:3d}. [{call['timestamp'].strftime('%H:%M:%S')}] {status}")
+            print(f"     Tool: {call['tool_name']}")
+            print(f"     Input: {call['input_data']}")
+            print(f"     Result: {call['result_summary']}")
+            print(f"     Time: {call['execution_time']:.3f}s")
+            print(f"     Context: {call['caller_context']}")
+            print(f"     Reasoning: {call['reasoning']}")
+
+            if i % 10 == 0 and i < len(call_history):
+                cont = input(f"\nShowing {i}/{len(call_history)} calls. Continue? (y/n): ").strip().lower()
+                if cont != 'y':
+                    break
+
+    def _show_cache_details(self, cache_stats: Dict):
+        """Show detailed cache information"""
+        print(f"\n💾 Detailed Cache Information")
+        print("=" * 50)
+
+        print(f"Global Cache Statistics:")
+        global_stats = cache_stats['global']
+        for key, value in global_stats.items():
+            if key != 'methods_tracked':
+                print(f"   {key.replace('_', ' ').title()}: {value}")
+
+        print(f"\nMethod-Specific Cache Performance:")
+        for method, stats in cache_stats['by_method'].items():
+            print(f"\n📊 {method}:")
+            for key, value in stats.items():
+                if isinstance(value, float):
+                    print(f"   {key.replace('_', ' ').title()}: {value:.3f}")
+                else:
+                    print(f"   {key.replace('_', ' ').title()}: {value}")
+
+        if cache_stats['recent_calls']:
+            print(f"\n📋 Recent Cache Activity:")
+            for call in cache_stats['recent_calls'][-10:]:
+                hit_status = "🎯 HIT" if call['hit'] else "❌ MISS"
+                print(f"   {hit_status} {call['function']} | {call['execution_time']:.3f}s | {call['source']}")
+
+    def _export_tool_report(self, report: Dict):
+        """Export tool usage report to file"""
+        try:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"tool_usage_report_{timestamp}.json"
+
+            # Convert datetime objects to strings for JSON serialization
+            serializable_report = self._make_json_serializable(report)
+
+            with open(filename, 'w') as f:
+                json.dump(serializable_report, f, indent=2, default=str)
+
+            print(f"✅ Report exported to {filename}")
+
+        except Exception as e:
+            print(f"❌ Failed to export report: {e}")
+
+    def _make_json_serializable(self, obj):
+        """Convert objects to JSON-serializable format"""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        elif isinstance(obj, dict):
+            return {key: self._make_json_serializable(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._make_json_serializable(item) for item in obj]
+        elif isinstance(obj, set):
+            return list(obj)
+        else:
+            return obj
+
+    def _clear_tool_history(self):
+        """Clear all tool usage history"""
+        print(f"\n🧹 Clear Tool Usage History")
+        print("=" * 40)
+
+        current_calls = len(tool_tracker.tool_calls)
+        print(f"Current history contains {current_calls} tool calls")
+
+        if current_calls == 0:
+            print("No history to clear.")
+            return
+
+        confirm = input("Are you sure you want to clear all tool usage history? (y/n): ").strip().lower()
+
+        if confirm == 'y':
+            tool_tracker.clear_history()
+            cache_manager.clear_all_caches()
+            print("✅ Tool usage history and caches cleared!")
+            print("📊 Statistics reset - starting fresh session")
+        else:
+            print("❌ Clear operation cancelled")
+
+    def _execute_simple_query(self, query: str) -> str:
+        """Execute a simple query using the agent - required by QueryDecomposer"""
+        try:
+            # Track the simple query execution if tracker is available
+            if hasattr(self, 'execution_tracker'):
+                self.execution_tracker.add_thinking_process(
+                    f"Executing simple query: {query[:100]}...",
+                    "Processing subgoal through agent query interface"
+                )
+
+            response = self.agent.query(query)
+            return str(response)
+
+        except Exception as e:
+            error_msg = f"Simple query execution failed: {e}"
+
+            # Track the error if tracker is available
+            if hasattr(self, 'execution_tracker'):
+                self.execution_tracker.add_error(error_msg, "simple_query_error")
+
+            return error_msg
+
+    def _synthesize_results(self, original_query: str, results: List[Dict]) -> str:
+        """Combine results from subgoals into comprehensive response - required by QueryDecomposer"""
+        try:
+            print(f"\n🔄 Synthesizing results from {len(results)} subgoals...")
+
+            # Track synthesis start if tracker is available
+            if hasattr(self, 'execution_tracker'):
+                self.execution_tracker.add_thinking_process(
+                    f"Starting result synthesis for {len(results)} subgoal results",
+                    f"Original query: {original_query[:100]}..."
+                )
+
+            # Separate results by type
+            data_results = [r for r in results if r['type'] == 'data_collection']
+            analysis_results = [r for r in results if r['type'] == 'analysis']
+            synthesis_results = [r for r in results if r['type'] == 'synthesis']
+
+            # Build comprehensive response
+            final_response = f"## Comprehensive Analysis for: {original_query}\n\n"
+
+            if data_results:
+                final_response += "### 📊 Data Collection Results:\n"
+                for i, result in enumerate(data_results, 1):
+                    final_response += f"{i}. **{result['subgoal']}**\n{result['result']}\n\n"
+
+            if analysis_results:
+                final_response += "### 🔍 Analysis Results:\n"
+                for i, result in enumerate(analysis_results, 1):
+                    final_response += f"{i}. **{result['subgoal']}**\n{result['result']}\n\n"
+
+            if synthesis_results:
+                final_response += "### 💡 Recommendations & Conclusions:\n"
+                for i, result in enumerate(synthesis_results, 1):
+                    final_response += f"{i}. **{result['subgoal']}**\n{result['result']}\n\n"
+
+            # Add summary
+            final_response += "### 📋 Executive Summary:\n"
+            final_response += f"Successfully analyzed complex query through {len(results)} focused subgoals. "
+            final_response += "Each aspect was thoroughly examined to provide comprehensive insights and actionable recommendations."
+
+            # Track synthesis completion if tracker is available
+            if hasattr(self, 'execution_tracker'):
+                self.execution_tracker.add_logical_inference(
+                    "Result synthesis completed successfully",
+                    [f"Processed {len(results)} subgoal results"],
+                    f"Generated comprehensive response with {len(final_response)} characters"
+                )
+
+            return final_response
+
+        except Exception as e:
+            error_msg = f"Result synthesis failed: {e}"
+
+            # Track synthesis error if tracker is available
+            if hasattr(self, 'execution_tracker'):
+                self.execution_tracker.add_error(error_msg, "synthesis_error")
+
+            # Return a fallback response
+            fallback_response = f"## Analysis Results for: {original_query}\n\n"
+            fallback_response += "⚠️ Result synthesis encountered an error, but here are the individual subgoal results:\n\n"
+
+            for i, result in enumerate(results, 1):
+                fallback_response += f"### Subgoal {i}: {result['subgoal']}\n"
+                fallback_response += f"**Result:** {result['result']}\n\n"
+
+            return fallback_response
+
     def main_menu(self):
-        """Main interactive menu with configuration display"""
+        """Main interactive menu with call graph visualization"""
         if not self.initialize():
             print("❌ Initialization failed. Exiting.")
             return
 
         while True:
             print("\n" + "=" * 60)
-            print("🤖 CUSTOMER SERVICE AI AGENT")
+            print("🤖 CUSTOMER SERVICE AI AGENT WITH CALL GRAPH TRACKING")
             print("=" * 60)
             print("1. 🎯 Run Predefined Scenarios")
             print("2. 💬 Custom Query")
@@ -2799,12 +3826,15 @@ class CustomerServiceAgent:
             print("4. 🏥 Health Check")
             print("5. 📈 Performance Metrics")
             print("6. 🧹 Clear Caches")
-            print("7. ⚙️  Show Configuration")  # NEW OPTION
-            print("8. 🔄 Reload Configuration")  # NEW OPTION
-            print("9. 🚪 Exit")
+            print("7. ⚙️  Show Configuration")
+            print("8. 🔄 Reload Configuration")
+            print("9. 🔧 Tool Usage Report")
+            print("10. 📊 View Call Graphs")         # NEW OPTION
+            print("11. 📈 Call Graph Statistics")    # NEW OPTION
+            print("12. 🚪 Exit")
             print("=" * 60)
 
-            choice = input("Select an option (1-9): ").strip()
+            choice = input("Select an option (1-12): ").strip()
 
             if choice == '1':
                 self.run_predefined_scenarios()
@@ -2819,14 +3849,20 @@ class CustomerServiceAgent:
             elif choice == '6':
                 self.clear_caches()
             elif choice == '7':
-                self.show_configuration()  # NEW METHOD
+                self.show_configuration()
             elif choice == '8':
-                self.reload_configuration()  # NEW METHOD
+                self.reload_configuration()
             elif choice == '9':
+                self.show_tool_usage_report()
+            elif choice == '10':              # NEW: View call graphs
+                self.view_call_graphs()
+            elif choice == '11':              # NEW: Call graph statistics
+                self.show_call_graph_stats()
+            elif choice == '12':
                 print("\n👋 Goodbye!")
                 break
             else:
-                print("❌ Invalid choice. Please select 1-9.")
+                print("❌ Invalid choice. Please select 1-12.")
 
         # Cleanup
         print("🧹 Cleaning up resources...")
@@ -2834,6 +3870,113 @@ class CustomerServiceAgent:
         if hasattr(self, 'async_tools') and self.async_tools:
             self.async_tools.close()
             print("✅ Async resources cleaned up")
+
+    def demonstrate_cache_behavior(self):
+        """Demonstrate how caching works with repeated queries - DEMO METHOD"""
+        print("\n🔬 Cache Behavior Demonstration")
+        print("=" * 50)
+
+        # Test query
+        test_order_id = 1001
+
+        print(f"Testing cache behavior with order {test_order_id}...")
+        print(f"This will call get_order_details multiple times to show cache effects.\n")
+
+        for i in range(3):
+            print(f"Call #{i+1}:")
+            start_time = time.time()
+
+            result = self.sync_tools.get_order_details(test_order_id)
+
+            execution_time = time.time() - start_time
+            print(f"   Execution time: {execution_time:.4f}s")
+
+            if isinstance(result, dict) and 'error' not in result:
+                print(f"   Result: Order for {result.get('customer_name', 'Unknown')}")
+            else:
+                print(f"   Result: {result}")
+
+            # Check if this was served from cache
+            cache_stats = cache_manager.get_detailed_stats()
+            method_stats = cache_stats['by_method'].get('get_order_details', {})
+            hit_rate = method_stats.get('hit_rate', 0)
+
+            print(f"   Cache hit rate for this method: {hit_rate:.1f}%")
+            print()
+
+            if i < 2:
+                time.sleep(1)  # Small delay between calls
+
+        print("💡 Observations:")
+        print("   • First call: Database query (slower)")
+        print("   • Subsequent calls: Served from cache (faster)")
+        print("   • Cache TTL: 5 minutes for this method")
+        print("   • Cache keys are based on function name and parameters")
+
+    @performance_monitor
+    def run_query_with_enhanced_tracking(self, query: str):
+        """Enhanced query execution with detailed tracking"""
+        if not self.agent:
+            print("❌ Agent not initialized!")
+            return
+
+        query_start_time = time.time()
+
+        # Record the query attempt
+        print(f"🤖 Processing query with enhanced tracking: '{query}'")
+        print("-" * 70)
+
+        # Clear recent tracking for this query context
+        initial_tool_calls = len(tool_tracker.tool_calls)
+
+        try:
+            # Execute the query
+            response = self.agent.query(query)
+
+            query_execution_time = time.time() - query_start_time
+            tools_used_in_query = len(tool_tracker.tool_calls) - initial_tool_calls
+
+            print(f"\n✅ Query completed successfully!")
+            print(f"⏱️  Total execution time: {query_execution_time:.2f}s")
+            print(f"🔧 Tools called during this query: {tools_used_in_query}")
+
+            # Show tools used for this specific query
+            if tools_used_in_query > 0:
+                print(f"\n🔧 Tools used in this query:")
+                recent_calls = tool_tracker.tool_calls[-tools_used_in_query:]
+                for i, call in enumerate(recent_calls, 1):
+                    status = "✅" if call['success'] else "❌"
+                    source = "💾 Cache" if 'cache' in call.get('reasoning', '').lower() else "🗄️  Database"
+                    print(f"   {i}. {status} {call['tool_name']} ({call['execution_time']:.3f}s) {source}")
+                    print(f"      └─ {call['reasoning']}")
+
+            print(f"\n📋 Agent Response:")
+            print("=" * 50)
+            print(response)
+
+            # Check for cache benefits
+            cache_stats = cache_manager.get_detailed_stats()
+            recent_cache_hits = sum(1 for call in tool_tracker.tool_calls[-tools_used_in_query:]
+                                    if 'cache' in call.get('reasoning', '').lower())
+
+            if recent_cache_hits > 0:
+                print(f"\n💾 Cache Performance for this query:")
+                print(f"   Cache hits: {recent_cache_hits}/{tools_used_in_query}")
+                print(f"   Time saved: ~{recent_cache_hits * 0.1:.1f}s (estimated)")
+
+        except Exception as e:
+            query_execution_time = time.time() - query_start_time
+            print(f"\n❌ Query failed after {query_execution_time:.2f}s")
+            print(f"Error: {e}")
+
+            # Still show tools that were attempted
+            tools_attempted = len(tool_tracker.tool_calls) - initial_tool_calls
+            if tools_attempted > 0:
+                print(f"\n🔧 Tools attempted before failure:")
+                recent_calls = tool_tracker.tool_calls[-tools_attempted:]
+                for i, call in enumerate(recent_calls, 1):
+                    status = "✅" if call['success'] else "❌"
+                    print(f"   {i}. {status} {call['tool_name']} ({call['execution_time']:.3f}s)")
 
     def setup_query_decomposer(self):
         """Setup intelligent query decomposition"""
@@ -2843,23 +3986,134 @@ class CustomerServiceAgent:
         return False
 
     def run_intelligent_query(self, query: str):
-        """Enhanced query execution with automatic decomposition"""
+        """Enhanced intelligent query execution with decomposition tracking"""
         if not hasattr(self, 'query_decomposer') or self.query_decomposer is None:
             print("⚠️  Query decomposer not initialized, using standard execution...")
             return self.run_query(query)
 
+        # Start call graph tracking
+        query_id = self.execution_tracker.track_agent_query_start(query, "IntelligentAgent")
+
         try:
-            print(f"🤖 Processing query with intelligent decomposition: '{query}'")
+            print(f"🤖 Processing query with intelligent decomposition and tracking: '{query}'")
+            print(f"📊 Tracking ID: {query_id}")
             print("=" * 70)
 
-            result = self.query_decomposer.execute_decomposed_query(query)
+            # Track complexity assessment
+            assessment = self.query_decomposer.assess_query_complexity(query)
+            self.execution_tracker.track_complexity_assessment(
+                query, assessment['complexity_score'], assessment['detected_patterns']
+            )
 
-            print("\n✅ Complete Response:")
+            # Track decomposition process
+            self.execution_tracker.add_thinking_process(
+                "Starting intelligent query decomposition",
+                f"Complexity: {assessment['complexity_score']}, indicators: {assessment['indicators']}"
+            )
+
+            # Get subgoals and track them
+            subgoals = self.query_decomposer.decompose_query(query)
+            decomp_node = self.execution_tracker.add_query_decomposition(
+                assessment['complexity_score'], subgoals
+            )
+
+            print(f"\n📝 Query decomposed into {len(subgoals)} subgoals:")
+            for i, subgoal in enumerate(subgoals, 1):
+                print(f"   {i}. {subgoal['subgoal']} [{subgoal['type']}]")
+
+            # Execute subgoals with tracking
+            results = []
+            context = []
+
+            for i, subgoal in enumerate(subgoals, 1):
+                print(f"\n🎯 Executing subgoal {i}: {subgoal['subgoal']}")
+                print("-" * 40)
+
+                # Track subgoal execution start
+                subgoal_thinking = self.execution_tracker.add_thinking_process(
+                    f"Processing subgoal {i}/{len(subgoals)}",
+                    f"Type: {subgoal['type']}, Priority: {subgoal['priority']}"
+                )
+
+                # Add context from previous subgoals
+                contextual_query = subgoal['subgoal']
+                if context:
+                    contextual_query = f"Based on previous analysis: {' '.join(context[-2:])}. Now: {subgoal['subgoal']}"
+                    self.execution_tracker.add_logical_inference(
+                        f"Incorporating context from {len(context)} previous subgoals",
+                        context[-2:] if len(context) >= 2 else context,
+                        f"Enhanced query: {contextual_query[:100]}..."
+                    )
+
+                try:
+                    # Track the individual subgoal execution
+                    self.execution_tracker.add_thinking_process(
+                        f"Executing subgoal via agent: {contextual_query[:100]}...",
+                        f"Subgoal type: {subgoal['type']}"
+                    )
+
+                    result = self._execute_simple_query(contextual_query)
+
+                    results.append({
+                        'subgoal': subgoal['subgoal'],
+                        'result': result,
+                        'type': subgoal['type']
+                    })
+
+                    context.append(f"Subgoal {i} found: {str(result)[:200]}...")
+
+                    # Track successful subgoal completion
+                    self.execution_tracker.add_logical_inference(
+                        f"Subgoal {i} completed successfully",
+                        [f"Query: {subgoal['subgoal'][:50]}..."],
+                        f"Result obtained: {str(result)[:100]}..."
+                    )
+
+                except Exception as e:
+                    error_msg = f"Subgoal {i} failed: {e}"
+                    print(f"⚠️  {error_msg}")
+                    self.execution_tracker.add_error(error_msg, f"subgoal_{i}_error")
+
+                    results.append({
+                        'subgoal': subgoal['subgoal'],
+                        'result': f"Failed to execute: {e}",
+                        'type': subgoal['type']
+                    })
+
+            # Track result synthesis
+            self.execution_tracker.add_thinking_process(
+                f"Synthesizing results from {len(results)} subgoals",
+                "Combining partial results into comprehensive response"
+            )
+
+            synthesis_node = self.execution_tracker.track_response_synthesis(
+                results, "subgoal_based_synthesis"
+            )
+
+            # Generate final response
+            final_response = self._synthesize_results(query, results)
+
+            self.execution_tracker.complete_result_synthesis(synthesis_node, final_response)
+            self.execution_tracker.finalize_query(final_response, success=True)
+
+            print(f"\n✅ Complete Response:")
             print("=" * 50)
-            print(result)
-            print()
+            print(final_response)
+
+            # Show execution summary
+            summary = self.execution_tracker.export_execution_summary()
+            print(f"\n📊 Intelligent Execution Summary:")
+            print(f"   Subgoals processed: {len(subgoals)}")
+            print(f"   Total time: {summary.get('total_execution_time', 0):.2f}s")
+            print(f"   Reasoning steps: {summary.get('reasoning_steps', 0)}")
+            print(f"   Thinking processes: {summary.get('thinking_steps', 0)}")
+            print(f"   📈 Call graph saved to: ./generated_callgraphs/")
+
+            return final_response
 
         except Exception as e:
+            self.execution_tracker.add_error(str(e), "intelligent_query_error")
+            self.execution_tracker.finalize_query(f"Intelligent query failed: {str(e)}", success=False)
             print(f"❌ Intelligent query execution failed: {e}")
             print("🔄 Falling back to standard execution...")
             self.run_query(query)
@@ -2937,6 +4191,240 @@ class CustomerServiceAgent:
 
         return metrics
 
+    def view_call_graphs(self):
+        """View generated call graphs"""
+        import os
+        import webbrowser
+        from pathlib import Path
+
+        graph_dir = "../src/generated_callgraphs"
+        if not os.path.exists(graph_dir):
+            print("📊 No call graphs directory found.")
+            print("   Call graphs will be created after running queries.")
+            return
+
+        html_files = [f for f in os.listdir(graph_dir) if f.endswith('.html')]
+
+        if not html_files:
+            print("📊 No HTML call graphs found.")
+            print("   Execute some queries first to generate call graphs.")
+            return
+
+        # Sort by modification time (newest first)
+        html_files.sort(key=lambda f: os.path.getmtime(os.path.join(graph_dir, f)), reverse=True)
+
+        print(f"\n📊 Generated Call Graphs ({len(html_files)} files):")
+        print("=" * 50)
+
+        for i, file in enumerate(html_files[:10], 1):  # Show only last 10
+            file_path = os.path.join(graph_dir, file)
+            file_size = os.path.getsize(file_path)
+            mod_time = os.path.getmtime(file_path)
+            mod_date = datetime.fromtimestamp(mod_time).strftime('%Y-%m-%d %H:%M:%S')
+
+            print(f"   {i:2d}. {file}")
+            print(f"       Size: {file_size:,} bytes | Modified: {mod_date}")
+
+        if len(html_files) > 10:
+            print(f"   ... and {len(html_files) - 10} more files")
+
+        print(f"\n📋 Options:")
+        print(f"   • Enter file number (1-{min(10, len(html_files))})")
+        print(f"   • 'latest' for most recent graph")
+        print(f"   • 'all' to see all files")
+        print(f"   • 'clean' to delete old graphs")
+        print(f"   • 'back' to return to main menu")
+
+        choice = input("\nSelect option: ").strip().lower()
+
+        if choice == 'back':
+            return
+        elif choice == 'latest':
+            latest_file = html_files[0]  # Already sorted by newest first
+            filepath = os.path.join(graph_dir, latest_file)
+            self._open_graph_file(filepath)
+        elif choice == 'all':
+            self._show_all_graphs(html_files, graph_dir)
+        elif choice == 'clean':
+            self._clean_old_graphs(html_files, graph_dir)
+        elif choice.isdigit() and 1 <= int(choice) <= min(10, len(html_files)):
+            selected_file = html_files[int(choice)-1]
+            filepath = os.path.join(graph_dir, selected_file)
+            self._open_graph_file(filepath)
+        else:
+            print("❌ Invalid choice.")
+
+    def _open_graph_file(self, filepath):
+        """Open a call graph file in the browser"""
+        import webbrowser
+        import os
+
+        try:
+            # Convert to absolute path for browser
+            abs_path = os.path.abspath(filepath)
+            file_url = f'file://{abs_path}'
+
+            print(f"🌐 Opening call graph in browser...")
+            print(f"   File: {os.path.basename(filepath)}")
+
+            webbrowser.open(file_url)
+            print(f"✅ Call graph opened successfully!")
+            print(f"💡 If browser didn't open, manually open: {abs_path}")
+
+        except Exception as e:
+            print(f"❌ Failed to open graph: {e}")
+            print(f"💡 Manually open this file: {filepath}")
+
+    def _show_all_graphs(self, html_files, graph_dir):
+        """Show all available graphs with detailed info"""
+        print(f"\n📊 All Generated Call Graphs ({len(html_files)} files):")
+        print("=" * 70)
+
+        total_size = 0
+        for i, file in enumerate(html_files, 1):
+            file_path = os.path.join(graph_dir, file)
+            file_size = os.path.getsize(file_path)
+            mod_time = os.path.getmtime(file_path)
+            mod_date = datetime.fromtimestamp(mod_time).strftime('%Y-%m-%d %H:%M:%S')
+
+            # Extract query info from filename if possible
+            query_info = "Unknown query"
+            if "_" in file:
+                parts = file.replace('.html', '').split('_')
+                if len(parts) >= 3:
+                    query_info = f"Query {parts[1]}"
+
+            total_size += file_size
+
+            print(f"{i:3d}. {file}")
+            print(f"     Query: {query_info}")
+            print(f"     Size: {file_size:,} bytes | Modified: {mod_date}")
+            print()
+
+        print(f"📈 Summary: {len(html_files)} graphs, {total_size:,} bytes total")
+
+        choice = input(f"\nEnter file number to open (1-{len(html_files)}) or 'back': ").strip()
+
+        if choice.isdigit() and 1 <= int(choice) <= len(html_files):
+            selected_file = html_files[int(choice)-1]
+            filepath = os.path.join(graph_dir, selected_file)
+            self._open_graph_file(filepath)
+
+    def _clean_old_graphs(self, html_files, graph_dir):
+        """Clean up old call graph files"""
+        import os
+
+        if len(html_files) <= 5:
+            print("📊 Only 5 or fewer graphs exist. No cleanup needed.")
+            return
+
+        print(f"\n🧹 Call Graph Cleanup")
+        print(f"Current graphs: {len(html_files)}")
+        print(f"Options:")
+        print(f"  1. Keep latest 10, delete {len(html_files) - 10} older files")
+        print(f"  2. Keep latest 5, delete {len(html_files) - 5} older files")
+        print(f"  3. Delete all except latest 3")
+        print(f"  4. Delete ALL graphs (careful!)")
+        print(f"  5. Cancel cleanup")
+
+        choice = input("Select cleanup option (1-5): ").strip()
+
+        files_to_delete = []
+
+        if choice == '1' and len(html_files) > 10:
+            files_to_delete = html_files[10:]
+        elif choice == '2' and len(html_files) > 5:
+            files_to_delete = html_files[5:]
+        elif choice == '3' and len(html_files) > 3:
+            files_to_delete = html_files[3:]
+        elif choice == '4':
+            files_to_delete = html_files
+        elif choice == '5':
+            print("❌ Cleanup cancelled.")
+            return
+        else:
+            print("❌ Invalid choice or no files to delete.")
+            return
+
+        if files_to_delete:
+            print(f"\n⚠️  About to delete {len(files_to_delete)} graph files:")
+            for file in files_to_delete[:5]:  # Show first 5
+                print(f"   - {file}")
+            if len(files_to_delete) > 5:
+                print(f"   ... and {len(files_to_delete) - 5} more")
+
+            confirm = input(f"\nConfirm deletion of {len(files_to_delete)} files? (yes/no): ").strip().lower()
+
+            if confirm == 'yes':
+                deleted_count = 0
+                for file in files_to_delete:
+                    try:
+                        os.remove(os.path.join(graph_dir, file))
+                        deleted_count += 1
+                    except Exception as e:
+                        print(f"❌ Failed to delete {file}: {e}")
+
+                print(f"✅ Successfully deleted {deleted_count} graph files")
+            else:
+                print("❌ Deletion cancelled.")
+
+    def show_call_graph_stats(self):
+        """Show statistics about call graph generation"""
+        import os
+
+        graph_dir = "../src/generated_callgraphs"
+
+        if not os.path.exists(graph_dir):
+            print("📊 No call graphs directory found.")
+            return
+
+        html_files = [f for f in os.listdir(graph_dir) if f.endswith('.html')]
+
+        if not html_files:
+            print("📊 No call graphs generated yet.")
+            return
+
+        print(f"\n📊 Call Graph Statistics")
+        print("=" * 40)
+
+        total_size = sum(os.path.getsize(os.path.join(graph_dir, f)) for f in html_files)
+
+        # Get file ages
+        now = datetime.now()
+        file_ages = []
+        for file in html_files:
+            file_path = os.path.join(graph_dir, file)
+            mod_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+            age_hours = (now - mod_time).total_seconds() / 3600
+            file_ages.append(age_hours)
+
+        print(f"📈 Overview:")
+        print(f"   Total graphs: {len(html_files)}")
+        print(f"   Total size: {total_size:,} bytes ({total_size/1024/1024:.2f} MB)")
+        print(f"   Average size: {total_size/len(html_files):,.0f} bytes")
+        print(f"   Newest: {min(file_ages):.1f} hours ago")
+        print(f"   Oldest: {max(file_ages):.1f} hours ago")
+
+        # Size distribution
+        file_sizes = [os.path.getsize(os.path.join(graph_dir, f)) for f in html_files]
+        print(f"\n📏 Size Distribution:")
+        print(f"   Smallest: {min(file_sizes):,} bytes")
+        print(f"   Largest: {max(file_sizes):,} bytes")
+        print(f"   Median: {sorted(file_sizes)[len(file_sizes)//2]:,} bytes")
+
+        # Recent activity
+        recent_files = [f for f, age in zip(html_files, file_ages) if age < 24]
+        print(f"\n⏰ Recent Activity (last 24 hours):")
+        print(f"   Graphs generated: {len(recent_files)}")
+
+        if recent_files:
+            print(f"   Most recent files:")
+            sorted_recent = sorted(recent_files, key=lambda f: os.path.getmtime(os.path.join(graph_dir, f)), reverse=True)
+            for file in sorted_recent[:3]:
+                mod_time = os.path.getmtime(os.path.join(graph_dir, file))
+                mod_date = datetime.fromtimestamp(mod_time).strftime('%H:%M:%S')
+                print(f"     - {file} (generated at {mod_date})")
+
     def __del__(self):
         """Cleanup async resources and database connections"""
         try:
@@ -2953,8 +4441,8 @@ class CustomerServiceAgent:
 
 
 def main():
-    """Main function"""
-    print("🚀 Customer Service AI Agent")
+    """Main function with enhanced tracking"""
+    print("🚀 Customer Service AI Agent with Enhanced Tool Tracking")
     print("Connecting to MySQL database and setting up AI tools...")
 
     try:
@@ -2962,6 +4450,16 @@ def main():
         agent.main_menu()
     except KeyboardInterrupt:
         print("\n\n👋 Interrupted by user. Goodbye!")
+
+        # Show final statistics
+        if len(tool_tracker.tool_calls) > 0:
+            print("\n📊 Final Session Statistics:")
+            report = tool_tracker.get_comprehensive_report()
+            session = report['session_summary']
+            print(f"   Total Tool Calls: {session['total_tool_calls']}")
+            print(f"   Session Duration: {session['session_duration_minutes']:.1f} minutes")
+            print(f"   Success Rate: {session['success_rate']:.1f}%")
+
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")
 

@@ -581,6 +581,96 @@ LEFT JOIN products p ON oi.product_id = p.product_id
 WHERE o.order_id IS NULL OR p.product_id IS NULL;
 ```
 
+```angular2html
+🔍 Running Scenario: Escalation Scenario (Advanced)
+======================================================================
+🧩 Complex query detected (score: 2)
+📋 Complexity indicators: long_query, multiple_requirements
+
+📋 Execution options:
+1. 🚀 Standard execution (single attempt)
+2. 🧩 Intelligent decomposition (break into subgoals)
+3. 🤖 Auto-decide based on complexity
+Select execution method (1-3, default=3): 
+🚀 Auto-selected: Standard execution
+🎯 Started tracking query: query_1750560789_1fcb3ba6
+🤖 Processing query with call graph tracking: 'Customer placed order 1013 on June 13th for a gaming laptop costing $1599.99 but it's still pending after a week. They're threatening to cancel. What are our options for resolution and how should we escalate this?'
+📊 Tracking ID: query_1750560789_1fcb3ba6
+----------------------------------------------------------------------
+> Running step d436fc9e-b010-4d24-ba97-3416fff3c945. Step input: Customer placed order 1013 on June 13th for a gaming laptop costing $1599.99 but it's still pending after a week. They're threatening to cancel. What are our options for resolution and how should we escalate this?
+2025-06-21 21:53:42,732 - httpx - INFO - _send_single_request:1025 - HTTP Request: POST http://127.0.0.1:1234/v1/completions "HTTP/1.1 200 OK"
+Observation: Error: Could not parse output. Please follow the thought-action-input format. Try again.
+> Running step 19c2b7f9-2f32-4c21-89dd-0428bee13c28. Step input: None
+2025-06-21 21:54:02,257 - httpx - INFO - _send_single_request:1025 - HTTP Request: POST http://127.0.0.1:1234/v1/completions "HTTP/1.1 200 OK"
+Thought: The user is asking about resolving an issue with a pending order and potential customer dissatisfaction. I need to gather more information about the order, return policy, and delivery date.
+Action: get_order_details
+Action Input: {'order_id': 1013}
+2025-06-21 21:54:02,264 - __main__ - INFO - execute_query:963 - Query executed successfully in 0.00s
+Observation: {'order_id': 1013, 'order_date': datetime.date(2024, 6, 13), 'delivery_date': datetime.date(2024, 6, 18), 'status': 'pending', 'total_amount': Decimal('1599.99'), 'customer_name': 'Kevin Clark', 'customer_email': 'kevin.clark@email.com'}
+> Running step 96f97d8a-49ef-4d88-8ed4-6b2db9c6922f. Step input: None
+2025-06-21 21:54:09,416 - openai._base_client - INFO - _sleep_for_retry:1061 - Retrying request to /completions in 0.415328 seconds
+2025-06-21 21:54:41,252 - httpx - INFO - _send_single_request:1025 - HTTP Request: POST http://127.0.0.1:1234/v1/completions "HTTP/1.1 200 OK"
+Thought: The order is still pending and the delivery date has passed, which may be causing customer dissatisfaction. I need to check the return policy for this order.
+Action: get_order_return_policy
+Action Input: {'order_id': 1013}
+2025-06-21 21:54:41,260 - __main__ - INFO - execute_query:963 - Query executed successfully in 0.00s
+2025-06-21 21:54:41,263 - __main__ - INFO - execute_query:963 - Query executed successfully in 0.00s
+Observation: Return policy for order 1013:
+- Gaming Laptop ASUS ROG: 30 days return policy
+> Running step 17281702-af21-4785-91e5-4cc5da245f30. Step input: None
+2025-06-21 21:54:57,231 - httpx - INFO - _send_single_request:1025 - HTTP Request: POST http://127.0.0.1:1234/v1/completions "HTTP/1.1 200 OK"
+Thought: The customer has a valid return window. I need to check the delivery date and current date to see if they are still within this window.
+Action: get_delivery_date
+Action Input: {'order_id': 1013}
+2025-06-21 21:54:57,236 - __main__ - INFO - execute_query:963 - Query executed successfully in 0.00s
+Observation: 18-Jun
+> Running step 3471f2b6-695e-49de-95d3-f29acaf1f28d. Step input: None
+2025-06-21 21:55:25,878 - httpx - INFO - _send_single_request:1025 - HTTP Request: POST http://127.0.0.1:1234/v1/completions "HTTP/1.1 200 OK"
+Thought: The customer is past the delivery date but still within the return policy window. I need to check if they have contacted us about this issue and how long ago it was.
+Action: search_orders_by_customer
+Action Input: {'email': 'kevin.clark@email.com'}
+2025-06-21 21:55:25,883 - __main__ - INFO - execute_query:963 - Query executed successfully in 0.00s
+Observation: [{'order_id': 1013, 'order_date': datetime.date(2024, 6, 13), 'status': 'pending', 'total_amount': Decimal('1599.99')}]
+> Running step 252b8087-68a9-4eea-9e8b-b6c3e7452f79. Step input: None
+2025-06-21 21:55:54,902 - httpx - INFO - _send_single_request:1025 - HTTP Request: POST http://127.0.0.1:1234/v1/completions "HTTP/1.1 200 OK"
+Thought: The customer has not contacted us about this issue yet. I need to check the return policy days for a gaming laptop.
+Action: get_item_return_days
+Action Input: {'item': 'gaming laptop'}
+2025-06-21 21:55:54,907 - __main__ - INFO - execute_query:963 - Query executed successfully in 0.00s
+Observation: 30
+> Running step cac58840-1405-41ce-a62b-21e0ba639fdb. Step input: None
+2025-06-21 21:56:31,467 - httpx - INFO - _send_single_request:1025 - HTTP Request: POST http://127.0.0.1:1234/v1/completions "HTTP/1.1 200 OK"
+Thought: The customer is within the return policy window and has not contacted us yet. I need to check if there are any issues with the product that could be causing the delay in delivery.
+Action: get_product_specifications
+Action Input: {'product_name': 'gaming laptop'}
+2025-06-21 21:57:16,899 - openai._base_client - INFO - _sleep_for_retry:1061 - Retrying request to /completions in 0.413201 seconds
+2025-06-21 21:58:02,316 - openai._base_client - INFO - _sleep_for_retry:1061 - Retrying request to /completions in 0.998199 seconds
+Observation: Error searching for gaming laptop specifications: Request timed out.
+> Running step e156f3f8-e3c1-4233-bb9e-bb91453549d2. Step input: None
+2025-06-21 21:59:33,333 - openai._base_client - INFO - _sleep_for_retry:1061 - Retrying request to /completions in 0.420740 seconds
+2025-06-21 21:59:59,960 - httpx - INFO - _send_single_request:1025 - HTTP Request: POST http://127.0.0.1:1234/v1/completions "HTTP/1.1 200 OK"
+Thought: I cannot gather detailed information about the product due to a timeout error. However, the customer is within the return policy window and has not contacted us yet. I recommend reaching out to them proactively to address their concerns and offer assistance with the pending order or initiating a return if they prefer.
+Answer: You can respond to the customer by saying, "Dear Kevin Clark, we apologize for the delay in your gaming laptop delivery from our end. We understand that you must be eagerly waiting for it. As of now, your order is still pending and has not been shipped yet. However, please rest assured that we are working on resolving this issue at the earliest. If you would like to cancel the order and receive a full refund, you can do so within 30 days from the date of purchase as per our return policy. We appreciate your patience and will keep you updated about the status of your order. Thank you for choosing us."
+
+Follow-up: After sending this message, please monitor the customer's response and take appropriate actions based on their feedback or further inquiries. If they decide to initiate a return, use the 'calculate_return_policy_and_deadlines' tool with order ID 1013 to provide them with the exact return deadline and policy details.
+📊 Query execution graph saved to: ./generated_callgraphs/query_1750560789_1fcb3ba6_20250621_215959.html
+
+✅ Agent Response:
+==============================
+You can respond to the customer by saying, "Dear Kevin Clark, we apologize for the delay in your gaming laptop delivery from our end. We understand that you must be eagerly waiting for it. As of now, your order is still pending and has not been shipped yet. However, please rest assured that we are working on resolving this issue at the earliest. If you would like to cancel the order and receive a full refund, you can do so within 30 days from the date of purchase as per our return policy. We appreciate your patience and will keep you updated about the status of your order. Thank you for choosing us."
+
+Follow-up: After sending this message, please monitor the customer's response and take appropriate actions based on their feedback or further inquiries. If they decide to initiate a return, use the 'calculate_return_policy_and_deadlines' tool with order ID 1013 to provide them with the exact return deadline and policy details.
+
+📊 Execution Summary:
+   Total time: 410.55s
+   Tool calls: 2
+   Action selections: 0
+   Cache hits: 4
+   Reasoning steps: 6
+   📈 Call graph saved to: ./generated_callgraphs/
+⏱️  run_query: 410.55s
+
+```
 ## 🤝 Contributing
 
 1. Fork the repository

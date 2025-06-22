@@ -1300,7 +1300,7 @@ class CustomerServiceAgent:
         import os
 
         print("\n🔍 Checking policy_files directory...")
-        policy_dir = "policy_files"
+        policy_dir = "../src/policy_files"
 
         if not os.path.exists(policy_dir):
             print(f"❌ Directory '{policy_dir}' not found!")
@@ -1366,7 +1366,7 @@ class CustomerServiceAgent:
         """Allow user to select specific files"""
         import os
 
-        policy_dir = "policy_files"
+        policy_dir = "../src/policy_files"
 
         if not os.path.exists(policy_dir):
             print(f"❌ Directory '{policy_dir}' not found!")

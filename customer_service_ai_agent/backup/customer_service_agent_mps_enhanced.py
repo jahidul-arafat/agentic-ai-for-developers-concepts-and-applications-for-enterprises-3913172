@@ -3,7 +3,7 @@
 Customer Service AI Agent with Database Integration
 Equivalent to the Jupyter notebook but with MySQL database connectivity
 """
-
+import functools
 import subprocess
 import sys
 import os
@@ -12,9 +12,16 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
 from functools import wraps
+from dotenv import load_dotenv
+from dataclasses import dataclass, field  # ADD field import
+from typing import List, Dict, Any, Optional
+
+load_dotenv()  # Load .env file if it exists
+
 
 def performance_monitor(func):
     """Decorator to monitor function performance"""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
@@ -23,6 +30,7 @@ def performance_monitor(func):
         execution_time = end_time - start_time
         print(f"⏱️  {func.__name__}: {execution_time:.2f}s")
         return result
+
     return wrapper
 
 
@@ -34,6 +42,7 @@ def install_package(package):
     except subprocess.CalledProcessError:
         return False
 
+
 def check_and_install_dependencies():
     """Check and install required packages"""
     print("🔍 Checking required dependencies...")
@@ -44,7 +53,9 @@ def check_and_install_dependencies():
         'llama-index-llms-openai-like': 'llama_index.llms.openai_like',
         'llama-index-embeddings-huggingface': 'llama_index.embeddings.huggingface',
         'sentence-transformers': 'sentence_transformers',
-        'nest-asyncio': 'nest_asyncio'
+        'nest-asyncio': 'nest_asyncio',
+        'psutil': 'psutil',
+        'python-dotenv': 'dotenv'  # ADD THIS LINE
     }
 
     missing_packages = []
@@ -75,6 +86,7 @@ def check_and_install_dependencies():
     else:
         print("✅ All required packages are available!")
         return True
+
 
 # Check dependencies before importing anything else
 if not check_and_install_dependencies():
@@ -107,7 +119,7 @@ except ImportError as e:
     LLAMAINDEX_AVAILABLE = False
 
 # Fix tokenizer parallelism warning
-#os.environ["TOKENIZERS_PARALLELISM"] = "false"
+# os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Performance optimizations
 os.environ["OMP_NUM_THREADS"] = str(os.cpu_count())  # Use all CPU cores
@@ -138,6 +150,293 @@ else:
 # Set device for sentence transformers
 os.environ["SENTENCE_TRANSFORMERS_DEVICE"] = str(device)
 
+# ----------------------------------- DataClass-------------------------------#
+# Enhanced imports for optimizations (ADD AFTER LINE 7)
+import gc
+import logging
+from dataclasses import dataclass
+
+try:
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    print("⚠️  psutil not available. Installing...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "psutil"])
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+
+
+# Configuration Management (ADD AFTER IMPORTS)
+@dataclass
+class Config:
+    """Comprehensive environment-based configuration"""
+
+    # Database Configuration
+    database_host: str = field(default_factory=lambda: os.getenv('DB_HOST', 'localhost'))
+    database_user: str = field(default_factory=lambda: os.getenv('DB_USER', 'root'))
+    database_password: str = field(default_factory=lambda: os.getenv('DB_PASSWORD', 'auburn'))
+    database_name: str = field(default_factory=lambda: os.getenv('DB_NAME', 'customer_service_db'))
+    database_pool_size: int = field(default_factory=lambda: int(os.getenv('DB_POOL_SIZE', '5')))
+
+    # LLM Configuration
+    llm_url: str = field(default_factory=lambda: os.getenv('LLM_URL', 'http://127.0.0.1:1234/v1'))
+    llm_model: str = field(default_factory=lambda: os.getenv('LLM_MODEL', 'open_gpt4_8x7b_v0.2'))
+    llm_api_key: str = field(default_factory=lambda: os.getenv('LLM_API_KEY', 'lm-studio'))
+    llm_temperature: float = field(default_factory=lambda: float(os.getenv('LLM_TEMPERATURE', '0.1')))
+    llm_max_tokens: int = field(default_factory=lambda: int(os.getenv('LLM_MAX_TOKENS', '3000')))
+    llm_timeout: int = field(default_factory=lambda: int(os.getenv('LLM_TIMEOUT', '45')))
+    llm_max_retries: int = field(default_factory=lambda: int(os.getenv('LLM_MAX_RETRIES', '2')))
+
+    # Embedding Model Configuration
+    embedding_model: str = field(default_factory=lambda: os.getenv('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2'))
+    embedding_max_length: int = field(default_factory=lambda: int(os.getenv('EMBEDDING_MAX_LENGTH', '512')))
+    embedding_device: str = field(default_factory=lambda: os.getenv('EMBEDDING_DEVICE', 'auto'))
+    embedding_trust_remote_code: bool = field(default_factory=lambda: os.getenv('EMBEDDING_TRUST_REMOTE_CODE', 'true').lower() == 'true')
+
+    # Performance Configuration
+    max_workers: int = field(default_factory=lambda: int(os.getenv('MAX_WORKERS', '4')))
+    max_iterations: int = field(default_factory=lambda: int(os.getenv('MAX_ITERATIONS', '15')))
+    query_timeout: int = field(default_factory=lambda: int(os.getenv('QUERY_TIMEOUT', '60')))
+    cache_ttl: int = field(default_factory=lambda: int(os.getenv('CACHE_TTL', '300')))
+    chunk_size: int = field(default_factory=lambda: int(os.getenv('CHUNK_SIZE', '1024')))
+    chunk_overlap: int = field(default_factory=lambda: int(os.getenv('CHUNK_OVERLAP', '50')))
+
+    # Hardware Optimization
+    use_gpu: bool = field(default_factory=lambda: os.getenv('USE_GPU', 'true').lower() == 'true')
+    pytorch_mps_ratio: str = field(default_factory=lambda: os.getenv('PYTORCH_MPS_HIGH_WATERMARK_RATIO', '0.0'))
+    tokenizers_parallelism: bool = field(default_factory=lambda: os.getenv('TOKENIZERS_PARALLELISM', 'true').lower() == 'true')
+
+    # Cache Directories
+    hf_hub_cache: str = field(default_factory=lambda: os.getenv('HF_HUB_CACHE', '../src/hf_cache'))
+    st_cache: str = field(default_factory=lambda: os.getenv('SENTENCE_TRANSFORMERS_HOME', '../src/st_cache'))
+
+    # Logging Configuration
+    log_level: str = field(default_factory=lambda: os.getenv('LOG_LEVEL', 'INFO'))
+    log_file: str = field(default_factory=lambda: os.getenv('LOG_FILE', '../src/customer_service_agent.log'))
+    log_format: str = field(default_factory=lambda: os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'))
+
+    # Circuit Breaker Configuration
+    circuit_breaker_failure_threshold: int = field(default_factory=lambda: int(os.getenv('CIRCUIT_BREAKER_FAILURE_THRESHOLD', '5')))
+    circuit_breaker_recovery_timeout: int = field(default_factory=lambda: int(os.getenv('CIRCUIT_BREAKER_RECOVERY_TIMEOUT', '60')))
+
+    # Agent Configuration
+    agent_verbose: bool = field(default_factory=lambda: os.getenv('AGENT_VERBOSE', 'true').lower() == 'true')
+    agent_allow_parallel_tool_calls: bool = field(default_factory=lambda: os.getenv('AGENT_ALLOW_PARALLEL_TOOL_CALLS', 'false').lower() == 'true')
+    agent_memory_enabled: bool = field(default_factory=lambda: os.getenv('AGENT_MEMORY_ENABLED', 'false').lower() == 'true')
+
+    # File Paths
+    policy_files_dir: str = field(default_factory=lambda: os.getenv('POLICY_FILES_DIR', '../src/policy_files'))
+
+    # FIXED: Use default_factory for mutable list
+    support_files_default: List[str] = field(default_factory=lambda: (
+        os.getenv('SUPPORT_FILES_DEFAULT', '').split(',')
+        if os.getenv('SUPPORT_FILES_DEFAULT')
+        else [
+            'Customer Service.txt',
+            'FAQ.txt',
+            'Return Policy.txt',
+            'Warranty Policy.txt',
+            'Escalation Procedures.txt',
+            'Technical Troubleshooting Guide.txt',
+            'Business Policies and Procedures.txt',
+            'Product Knowledge Database.txt',
+            'Order Management and Fulfillment.txt'
+        ]
+    ))
+
+    # Performance Monitoring
+    enable_performance_monitoring: bool = field(default_factory=lambda: os.getenv('ENABLE_PERFORMANCE_MONITORING', 'true').lower() == 'true')
+    enable_memory_monitoring: bool = field(default_factory=lambda: os.getenv('ENABLE_MEMORY_MONITORING', 'true').lower() == 'true')
+    memory_warning_threshold_mb: int = field(default_factory=lambda: int(os.getenv('MEMORY_WARNING_THRESHOLD_MB', '100')))
+    enable_query_caching: bool = field(default_factory=lambda: os.getenv('ENABLE_QUERY_CACHING', 'true').lower() == 'true')
+
+    # Development/Debug Settings
+    debug_mode: bool = field(default_factory=lambda: os.getenv('DEBUG_MODE', 'false').lower() == 'true')
+    profile_performance: bool = field(default_factory=lambda: os.getenv('PROFILE_PERFORMANCE', 'false').lower() == 'true')
+    enable_detailed_logging: bool = field(default_factory=lambda: os.getenv('ENABLE_DETAILED_LOGGING', 'false').lower() == 'true')
+
+    def __post_init__(self):
+        """Post-initialization setup"""
+        # Set environment variables for external libraries
+        os.environ["OMP_NUM_THREADS"] = str(self.max_workers)
+        os.environ["MKL_NUM_THREADS"] = str(self.max_workers)
+        os.environ["VECLIB_MAXIMUM_THREADS"] = str(self.max_workers)
+        os.environ["NUMEXPR_NUM_THREADS"] = str(self.max_workers)
+
+        # Memory optimizations
+        os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = self.pytorch_mps_ratio
+        os.environ["TOKENIZERS_PARALLELISM"] = str(self.tokenizers_parallelism).lower()
+
+        # Cache optimizations
+        os.environ["HF_HUB_CACHE"] = self.hf_hub_cache
+        os.environ["SENTENCE_TRANSFORMERS_HOME"] = self.st_cache
+
+        # Create cache directories if they don't exist
+        os.makedirs(self.hf_hub_cache, exist_ok=True)
+        os.makedirs(self.st_cache, exist_ok=True)
+        os.makedirs(self.policy_files_dir, exist_ok=True)
+
+        # Clean up support files list (remove empty strings)
+        self.support_files_default = [f.strip() for f in self.support_files_default if f.strip()]
+
+
+        # Set up logger after directories are created
+        global logger
+        if 'logger' not in globals():
+            logger = setup_logging()
+
+        logger.info(f"Configuration initialized with environment settings")
+        logger.debug(f"LLM URL: {self.llm_url}, Model: {self.llm_model}")
+        logger.debug(f"Database: {self.database_host}:{self.database_name}")
+        logger.debug(f"Cache directories: HF={self.hf_hub_cache}, ST={self.st_cache}")
+        logger.debug(f"Support files: {len(self.support_files_default)} files configured")
+
+
+# ----------------------------------- Logger-------------------------------#
+# Enhanced Logging Setup - MOVE THIS BEFORE Config initialization
+def setup_logging():
+    """Setup structured logging with file and console handlers"""
+    # Use environment variables directly since config isn't created yet
+    log_level = os.getenv('LOG_LEVEL', 'INFO')
+    log_file = os.getenv('LOG_FILE', '../src/customer_service_agent.log')
+    log_format = os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s')
+
+    logging.basicConfig(
+        level=getattr(logging, log_level),
+        format=log_format,
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
+    )
+    return logging.getLogger(__name__)
+
+# Initialize logger FIRST
+logger = setup_logging()
+
+# NOW initialize configuration
+config = Config()
+
+# Log configuration after it's created
+logger.info(f"Configuration initialized with environment settings")
+logger.debug(f"LLM URL: {config.llm_url}, Model: {config.llm_model}")
+logger.debug(f"Database: {config.database_host}:{config.database_name}")
+logger.debug(f"Cache directories: HF={config.hf_hub_cache}, ST={config.st_cache}")
+logger.debug(f"Support files: {len(config.support_files_default)} files configured")
+
+# Memory monitoring decorator
+def memory_monitor(func):
+    """Memory monitoring decorator with garbage collection"""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if not PSUTIL_AVAILABLE:
+            return func(*args, **kwargs)
+
+        process = psutil.Process()
+        mem_before = process.memory_info().rss / 1024 / 1024  # MB
+
+        result = func(*args, **kwargs)
+
+        mem_after = process.memory_info().rss / 1024 / 1024  # MB
+        memory_increase = mem_after - mem_before
+
+        if memory_increase > 100:  # If memory increased by 100MB
+            logger.warning(f"High memory usage in {func.__name__}: {memory_increase:.1f}MB")
+            gc.collect()  # Force garbage collection
+            mem_after_gc = process.memory_info().rss / 1024 / 1024
+            print(f"⚠️  High memory usage: {memory_increase:.1f}MB, GC freed {mem_after - mem_after_gc:.1f}MB")
+
+        return result
+
+    return wrapper
+
+
+# Query Result Caching (ADD AFTER memory_monitor)
+def cached_query(ttl_seconds=300):
+    """Decorator for caching query results with TTL"""
+
+    def decorator(func):
+        cache = {}
+        cache_stats = {'hits': 0, 'misses': 0}
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            key = f"{func.__name__}:{str(args)}:{str(sorted(kwargs.items()))}"
+            now = datetime.now()
+
+            # Check cache
+            if key in cache:
+                result, timestamp = cache[key]
+                if now - timestamp < timedelta(seconds=ttl_seconds):
+                    cache_stats['hits'] += 1
+                    return result
+                else:
+                    del cache[key]
+
+            # Cache miss
+            cache_stats['misses'] += 1
+            result = func(*args, **kwargs)
+            cache[key] = (result, now)
+
+            # Cache size management
+            if len(cache) > 1000:
+                oldest_key = min(cache.keys(), key=lambda k: cache[k][1])
+                del cache[oldest_key]
+
+            return result
+
+        wrapper.cache_stats = lambda: cache_stats.copy()
+        wrapper.clear_cache = lambda: cache.clear()
+        return wrapper
+
+    return decorator
+
+
+# Circuit Breaker Pattern (ADD AFTER cached_query)
+class CircuitBreaker:
+    """Circuit breaker pattern for resilient operations"""
+
+    def __init__(self, failure_threshold=5, recovery_timeout=60, name="CircuitBreaker"):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.name = name
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = 'CLOSED'  # CLOSED, OPEN, HALF_OPEN
+
+    def call(self, func, *args, **kwargs):
+        """Execute function with circuit breaker protection"""
+        if self.state == 'OPEN':
+            if self.last_failure_time and time.time() - self.last_failure_time > self.recovery_timeout:
+                self.state = 'HALF_OPEN'
+            else:
+                raise Exception(f"Circuit breaker {self.name} is OPEN")
+
+        try:
+            result = func(*args, **kwargs)
+            if self.state == 'HALF_OPEN':
+                self.state = 'CLOSED'
+                self.failure_count = 0
+            return result
+        except Exception as e:
+            self.failure_count += 1
+            self.last_failure_time = time.time()
+            if self.failure_count >= self.failure_threshold:
+                self.state = 'OPEN'
+            raise e
+
+    def get_state(self):
+        return {
+            'state': self.state,
+            'failure_count': self.failure_count,
+            'last_failure_time': self.last_failure_time
+        }
+
+
 class DatabaseManager:
     """Handles all database operations with connection pooling"""
 
@@ -148,6 +447,17 @@ class DatabaseManager:
         self.database = database
         self.connection = None
         self.connection_pool = None
+
+        # ADD these lines in DatabaseManager.__init__ after existing assignments
+        self.circuit_breaker = CircuitBreaker(name="DatabaseCircuitBreaker")
+        self.query_stats = {
+            'total_queries': 0,
+            'successful_queries': 0,
+            'failed_queries': 0,
+            'avg_query_time': 0,
+            'total_query_time': 0
+        }
+        logger.info(f"DatabaseManager initialized for {self.host}:{self.database}")
 
     def connect(self):
         """Establish database connection with optimizations"""
@@ -219,28 +529,51 @@ class DatabaseManager:
             self.connection = None
             self.connection_pool = None
 
+    @memory_monitor
     def execute_query(self, query: str, params: tuple = None) -> List[tuple]:
-        """Execute a query with connection pooling"""
-        try:
-            if self.connection_pool:
-                # Use connection from pool
-                conn = self.connection_pool.get_connection()
-                cursor = conn.cursor(buffered=True)
-                cursor.execute(query, params or ())
-                results = cursor.fetchall()
-                cursor.close()
-                conn.close()  # Return connection to pool
-                return results
-            else:
-                # Fallback to single connection
-                cursor = self.connection.cursor(buffered=True)
-                cursor.execute(query, params or ())
-                results = cursor.fetchall()
-                cursor.close()
-                return results
+        """Execute a query with connection pooling, logging, and circuit breaker"""
+        start_time = time.time()
 
-        except Error as e:
-            print(f"❌ Query execution failed: {e}")
+        def _execute():
+            try:
+                if self.connection_pool:
+                    conn = self.connection_pool.get_connection()
+                    cursor = conn.cursor(buffered=True)
+                    cursor.execute(query, params or ())
+                    results = cursor.fetchall()
+                    cursor.close()
+                    conn.close()
+                    return results
+                else:
+                    cursor = self.connection.cursor(buffered=True)
+                    cursor.execute(query, params or ())
+                    results = cursor.fetchall()
+                    cursor.close()
+                    return results
+            except Error as e:
+                logger.error(f"Query execution failed: {e}")
+                raise
+
+        try:
+            results = self.circuit_breaker.call(_execute)
+
+            # Update stats
+            execution_time = time.time() - start_time
+            self.query_stats['total_queries'] += 1
+            self.query_stats['successful_queries'] += 1
+            self.query_stats['total_query_time'] += execution_time
+            self.query_stats['avg_query_time'] = (
+                    self.query_stats['total_query_time'] / self.query_stats['total_queries']
+            )
+
+            logger.info(f"Query executed successfully in {execution_time:.2f}s")
+            return results
+
+        except Exception as e:
+            execution_time = time.time() - start_time
+            self.query_stats['total_queries'] += 1
+            self.query_stats['failed_queries'] += 1
+            logger.error(f"Query failed after {execution_time:.2f}s: {e}")
             return []
 
     def get_connection_info(self):
@@ -275,8 +608,15 @@ class AsyncCustomerServiceTools:
 
     def __init__(self, db_manager: DatabaseManager, sync_tools):
         self.db = db_manager
-        self.sync_tools = sync_tools  # Reference to existing tools
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        self.sync_tools = sync_tools
+        self.executor = ThreadPoolExecutor(max_workers=config.max_workers)
+        self.semaphore = asyncio.Semaphore(10)  # Limit concurrent operations
+        logger.info(f"AsyncCustomerServiceTools initialized with {config.max_workers} workers")
+
+    async def get_multiple_orders_with_limit(self, order_ids: List[int]):
+        """Get multiple orders with semaphore limiting"""
+        async with self.semaphore:
+            return await self.get_multiple_orders_parallel(order_ids)
 
     async def get_multiple_orders_parallel(self, order_ids: List[int]) -> List[Dict]:
         """Get multiple orders in parallel - faster for expert scenarios"""
@@ -316,30 +656,27 @@ class AsyncCustomerServiceTools:
         """Cleanup executor"""
         self.executor.shutdown(wait=True)
 
+
 class CustomerServiceTools:
     """Enhanced customer service tool functions with sophisticated analytics"""
 
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
         self._cache = {}  # Simple caching for performance
+        logger.info("CustomerServiceTools initialized with enhanced caching")
 
     # ============= BASIC TOOLS (Keep existing) =============
+    @cached_query(ttl_seconds=600)  # Cache for 10 minutes
     def get_order_items(self, order_id: int) -> List[str]:
         """Given an order ID, returns the list of items purchased for that order"""
-        cache_key = f"order_items_{order_id}"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-
         query = """
                 SELECT p.product_name
                 FROM order_items oi
                          JOIN products p ON oi.product_id = p.product_id
-                WHERE oi.order_id = %s \
+                WHERE oi.order_id = %s
                 """
         results = self.db.execute_query(query, (order_id,))
-        items = [item[0] for item in results] if results else []
-        self._cache[cache_key] = items
-        return items
+        return [item[0] for item in results] if results else []
 
     def get_delivery_date(self, order_id: int) -> str:
         """Given an order ID, returns the delivery date for that order"""
@@ -356,15 +693,14 @@ class CustomerServiceTools:
         query = """
                 SELECT return_days
                 FROM products
-                WHERE product_name LIKE %s
-                    LIMIT 1 \
+                WHERE product_name LIKE %s LIMIT 1 \
                 """
         results = self.db.execute_query(query, (f"%{item}%",))
         return results[0][0] if results else 45  # Default 45 days
 
+    @cached_query(ttl_seconds=300)  # Cache for 5 minutes
     def get_order_details(self, order_id: int) -> Dict[str, Any]:
-        """Get comprehensive order details"""
-        # Handle different input formats
+        """Get comprehensive order details with caching"""
         if isinstance(order_id, dict):
             if 'order_id' in order_id:
                 order_id = order_id['order_id']
@@ -372,16 +708,22 @@ class CustomerServiceTools:
                 return {"error": "Invalid input format. Expected order_id."}
 
         try:
-            order_id = int(order_id)  # Ensure it's an integer
+            order_id = int(order_id)
         except (ValueError, TypeError):
             return {"error": f"Invalid order_id format: {order_id}. Must be a number."}
 
         query = """
-                SELECT o.order_id, o.order_date, o.delivery_date, o.status,
-                       o.total_amount, c.first_name, c.last_name, c.email
+                SELECT o.order_id,
+                       o.order_date,
+                       o.delivery_date,
+                       o.status,
+                       o.total_amount,
+                       c.first_name,
+                       c.last_name,
+                       c.email
                 FROM orders o
                          JOIN customers c ON o.customer_id = c.customer_id
-                WHERE o.order_id = %s \
+                WHERE o.order_id = %s
                 """
         results = self.db.execute_query(query, (order_id,))
         if results:
@@ -413,15 +755,21 @@ class CustomerServiceTools:
     def analyze_customer_orders_comprehensive(self, customer_email: str) -> Dict[str, Any]:
         """Comprehensive analysis of all customer orders with return eligibility"""
         query = """
-                SELECT
-                    o.order_id, o.order_date, o.delivery_date, o.status, o.total_amount,
-                    p.product_name, p.return_days, oi.quantity, oi.unit_price,
-                    DATEDIFF(CURDATE(), o.delivery_date) as days_since_delivery,
-                    CASE
-                        WHEN o.delivery_date IS NULL THEN 'Not delivered'
-                        WHEN DATEDIFF(CURDATE(), o.delivery_date) <= p.return_days THEN 'Returnable'
-                        ELSE 'Return expired'
-                        END as return_status
+                SELECT o.order_id,
+                       o.order_date,
+                       o.delivery_date,
+                       o.status,
+                       o.total_amount,
+                       p.product_name,
+                       p.return_days,
+                       oi.quantity,
+                       oi.unit_price,
+                       DATEDIFF(CURDATE(), o.delivery_date) as days_since_delivery,
+                       CASE
+                           WHEN o.delivery_date IS NULL THEN 'Not delivered'
+                           WHEN DATEDIFF(CURDATE(), o.delivery_date) <= p.return_days THEN 'Returnable'
+                           ELSE 'Return expired'
+                           END                              as return_status
                 FROM orders o
                          JOIN customers c ON o.customer_id = c.customer_id
                          JOIN order_items oi ON o.order_id = oi.order_id
@@ -479,20 +827,26 @@ class CustomerServiceTools:
     def calculate_return_policy_and_deadlines(self, order_id: int) -> Dict[str, Any]:
         """Calculate exact return deadlines and policy details for an order"""
         query = """
-                SELECT
-                    o.order_id, o.delivery_date, o.total_amount,
-                    p.product_name, p.return_days, p.price,
-                    oi.quantity, oi.unit_price,
-                    DATE_ADD(o.delivery_date, INTERVAL p.return_days DAY) as return_deadline,
-                    DATEDIFF(DATE_ADD(o.delivery_date, INTERVAL p.return_days DAY), CURDATE()) as days_remaining,
-                    CASE
-                        WHEN DATEDIFF(DATE_ADD(o.delivery_date, INTERVAL p.return_days DAY), CURDATE()) > 0 THEN 'Active'
-                        ELSE 'Expired'
-                        END as return_window_status
+                SELECT o.order_id,
+                       o.delivery_date,
+                       o.total_amount,
+                       p.product_name,
+                       p.return_days,
+                       p.price,
+                       oi.quantity,
+                       oi.unit_price,
+                       DATE_ADD(o.delivery_date, INTERVAL p.return_days DAY)                      as return_deadline,
+                       DATEDIFF(DATE_ADD(o.delivery_date, INTERVAL p.return_days DAY), CURDATE()) as days_remaining,
+                       CASE
+                           WHEN DATEDIFF(DATE_ADD(o.delivery_date, INTERVAL p.return_days DAY), CURDATE()) > 0
+                               THEN 'Active'
+                           ELSE 'Expired'
+                           END                                                                    as return_window_status
                 FROM orders o
                          JOIN order_items oi ON o.order_id = oi.order_id
                          JOIN products p ON oi.product_id = p.product_id
-                WHERE o.order_id = %s AND o.delivery_date IS NOT NULL \
+                WHERE o.order_id = %s
+                  AND o.delivery_date IS NOT NULL \
                 """
         results = self.db.execute_query(query, (order_id,))
 
@@ -614,12 +968,18 @@ class CustomerServiceTools:
         from datetime import datetime
 
         query = """
-                SELECT
-                    o.order_id, o.customer_id, o.order_date, o.delivery_date, o.status, o.total_amount,
-                    c.email, c.city, c.state,
-                    DATEDIFF(CURDATE(), o.order_date) as days_since_order,
-                    DATEDIFF(CURDATE(), o.delivery_date) as days_since_delivery,
-                    COUNT(o2.order_id) as customer_order_history
+                SELECT o.order_id,
+                       o.customer_id,
+                       o.order_date,
+                       o.delivery_date,
+                       o.status,
+                       o.total_amount,
+                       c.email,
+                       c.city,
+                       c.state,
+                       DATEDIFF(CURDATE(), o.order_date)    as days_since_order,
+                       DATEDIFF(CURDATE(), o.delivery_date) as days_since_delivery,
+                       COUNT(o2.order_id)                   as customer_order_history
                 FROM orders o
                          JOIN customers c ON o.customer_id = c.customer_id
                          LEFT JOIN orders o2 ON c.customer_id = o2.customer_id AND o2.order_date < o.order_date
@@ -699,13 +1059,12 @@ class CustomerServiceTools:
             end_date = '2024-06-30'
 
         query = """
-                SELECT
-                    o.status,
-                    COUNT(*) as order_count,
-                    AVG(o.total_amount) as avg_order_value,
-                    SUM(o.total_amount) as total_value,
-                    AVG(DATEDIFF(o.delivery_date, o.order_date)) as avg_delivery_days,
-                    COUNT(CASE WHEN DATEDIFF(o.delivery_date, o.order_date) > 7 THEN 1 END) as delayed_deliveries
+                SELECT o.status,
+                       COUNT(*)                                                                as order_count,
+                       AVG(o.total_amount)                                                     as avg_order_value,
+                       SUM(o.total_amount)                                                     as total_value,
+                       AVG(DATEDIFF(o.delivery_date, o.order_date))                            as avg_delivery_days,
+                       COUNT(CASE WHEN DATEDIFF(o.delivery_date, o.order_date) > 7 THEN 1 END) as delayed_deliveries
                 FROM orders o
                 WHERE o.order_date BETWEEN %s AND %s
                 GROUP BY o.status
@@ -736,9 +1095,11 @@ class CustomerServiceTools:
 
             # Identify performance issues
             if row[4] and row[4] > 7:
-                analysis['performance_issues'].append(f"Status '{row[0]}': Average delivery time {row[4]:.1f} days (target: 7 days)")
+                analysis['performance_issues'].append(
+                    f"Status '{row[0]}': Average delivery time {row[4]:.1f} days (target: 7 days)")
             if row[5] > 0:
-                analysis['performance_issues'].append(f"Status '{row[0]}': {row[5]} delayed deliveries out of {row[1]} orders")
+                analysis['performance_issues'].append(
+                    f"Status '{row[0]}': {row[5]} delayed deliveries out of {row[1]} orders")
 
         return analysis
 
@@ -861,6 +1222,7 @@ class CustomerServiceTools:
             'orders_found': len(orders),
             'orders': list(orders.values())
         }
+
 
 class QueryDecomposer:
     """Intelligent query decomposition for complex customer service queries"""
@@ -1005,15 +1367,18 @@ class QueryDecomposer:
         # Multi-customer pattern
         if 'multi_customer' in assessment['detected_patterns']:
             subgoals.extend([
-                {'subgoal': 'Identify and list all customers mentioned in the query', 'type': 'data_collection', 'priority': 1},
-                {'subgoal': 'Get detailed order information for each customer', 'type': 'data_collection', 'priority': 2},
+                {'subgoal': 'Identify and list all customers mentioned in the query', 'type': 'data_collection',
+                 'priority': 1},
+                {'subgoal': 'Get detailed order information for each customer', 'type': 'data_collection',
+                 'priority': 2},
                 {'subgoal': 'Analyze patterns and issues across the customer group', 'type': 'analysis', 'priority': 3}
             ])
 
         # Predictive analysis pattern
         if 'predictive_analysis' in assessment['detected_patterns']:
             subgoals.extend([
-                {'subgoal': 'Analyze recent order and customer behavior patterns', 'type': 'data_collection', 'priority': 1},
+                {'subgoal': 'Analyze recent order and customer behavior patterns', 'type': 'data_collection',
+                 'priority': 1},
                 {'subgoal': 'Identify risk factors and potential issues', 'type': 'analysis', 'priority': 2},
                 {'subgoal': 'Generate proactive recommendations and action plans', 'type': 'synthesis', 'priority': 3}
             ])
@@ -1029,7 +1394,8 @@ class QueryDecomposer:
         # Default decomposition if no specific patterns
         if not subgoals:
             subgoals = [
-                {'subgoal': 'Collect relevant data based on the query requirements', 'type': 'data_collection', 'priority': 1},
+                {'subgoal': 'Collect relevant data based on the query requirements', 'type': 'data_collection',
+                 'priority': 1},
                 {'subgoal': 'Analyze the collected data and identify key insights', 'type': 'analysis', 'priority': 2},
                 {'subgoal': 'Provide comprehensive response with recommendations', 'type': 'synthesis', 'priority': 3}
             ]
@@ -1141,8 +1507,8 @@ class CustomerServiceAgent:
         self.agent = None
         self.support_index = None
         self.query_decomposer = None
-        self.sync_tools = None      # Regular tools
-        self.async_tools = None     # Async tools for parallel operations
+        self.sync_tools = None  # Regular tools
+        self.async_tools = None  # Async tools for parallel operations
 
     def setup_database(self):
         """Setup database connection"""
@@ -1159,105 +1525,213 @@ class CustomerServiceAgent:
         return False
 
     def setup_llm(self):
-        """Setup Local LLM connection with enhanced configuration"""
+        """Setup Local LLM connection with comprehensive configuration from .env"""
         if not LLAMAINDEX_AVAILABLE:
+            logger.error("LlamaIndex not available")
             return False
 
-        print("🤖 Setting up Local LLM...")
+        logger.info("Setting up Local LLM with configuration from .env file...")
+        print("🤖 Setting up Local LLM with environment configuration...")
+
         try:
-            # Check for Mac GPU availability
-            try:
-                import torch
-                if torch.backends.mps.is_available():
-                    device_str = "mps"
-                    print("🚀 Mac GPU (Metal) detected and will be used for embeddings")
-                else:
-                    device_str = "cpu"
-                    print("💻 Using CPU for embeddings")
-            except ImportError:
-                device_str = "cpu"
-                print("💻 PyTorch not available, using CPU for embeddings")
+            # Determine device for embeddings
+            device_str = self._determine_embedding_device()
 
-            # Local server configuration
-            local_llm_url = "http://127.0.0.1:1234/v1"
-
-            # Setup the LLM to use local server with optimized settings
+            # Setup the LLM with all configurable parameters
+            logger.info(f"Configuring LLM: {config.llm_model} at {config.llm_url}")
             Settings.llm = OpenAILike(
-                model="open_gpt4_8x7b_v0.2",
-                api_base=local_llm_url,
-                api_key="lm-studio",
+                model=config.llm_model,
+                api_base=config.llm_url,
+                api_key=config.llm_api_key,
                 is_local=True,
-                temperature=0.1,
-                max_tokens=3000,
-                timeout=45,
-                max_retries=2
+                temperature=config.llm_temperature,
+                max_tokens=config.llm_max_tokens,
+                timeout=config.llm_timeout,
+                max_retries=config.llm_max_retries
             )
 
-            # Setup local embedding model for RAG with GPU acceleration
+            # Setup embedding model with comprehensive configuration
+            logger.info(f"Configuring embeddings: {config.embedding_model} on {device_str}")
             try:
                 Settings.embed_model = HuggingFaceEmbedding(
-                    model_name="sentence-transformers/all-MiniLM-L6-v2",
-                    max_length=512,
+                    model_name=config.embedding_model,
+                    max_length=config.embedding_max_length,
                     device=device_str,
-                    trust_remote_code=True
+                    trust_remote_code=config.embedding_trust_remote_code
                 )
+                logger.info(f"Embeddings configured successfully on {device_str}")
             except Exception as embed_error:
+                logger.warning(f"GPU embedding failed, falling back to CPU: {embed_error}")
                 print(f"⚠️  GPU embedding failed, falling back to CPU: {embed_error}")
+
+                # Fallback to CPU
                 Settings.embed_model = HuggingFaceEmbedding(
-                    model_name="sentence-transformers/all-MiniLM-L6-v2",
-                    max_length=512
+                    model_name=config.embedding_model,
+                    max_length=config.embedding_max_length,
+                    device="cpu",
+                    trust_remote_code=config.embedding_trust_remote_code
                 )
                 device_str = "cpu"
 
-            print("✅ LLM setup completed with optimizations!")
-            print(f"   🎯 Temperature: 0.1 (focused responses)")
-            print(f"   📝 Max tokens: 3000 (detailed answers)")
-            print(f"   ⏱️  Timeout: 45s per call")
-            print(f"   🔄 Retries: 2 attempts")
-            print(f"   🚀 Embedding device: {device_str}")
-            return True
+            # Set device for sentence transformers
+            os.environ["SENTENCE_TRANSFORMERS_DEVICE"] = device_str
+
+            # Log configuration summary
+            self._log_llm_configuration(device_str)
+
+            # Test LLM connection
+            if self._test_llm_connection():
+                logger.info("LLM setup completed successfully")
+                return True
+            else:
+                logger.error("LLM connection test failed")
+                return False
 
         except Exception as e:
+            logger.error(f"LLM setup failed: {e}")
             print(f"❌ LLM setup failed: {e}")
-            print("💡 Make sure LM Studio is running on http://127.0.0.1:1234/v1")
+            print("💡 Please check your .env configuration and ensure LM Studio is running")
             return False
 
+    def _determine_embedding_device(self):
+        """Determine the best device for embeddings based on configuration and availability"""
+        if config.embedding_device.lower() == 'auto':
+            # Auto-detect best device
+            try:
+                import torch
+                if config.use_gpu and torch.backends.mps.is_available():
+                    logger.info("Mac GPU (Metal Performance Shaders) detected and enabled")
+                    print("🚀 Using Mac GPU (Metal Performance Shaders)")
+                    return "mps"
+                elif config.use_gpu and torch.cuda.is_available():
+                    logger.info("CUDA GPU detected and enabled")
+                    print("🚀 Using CUDA GPU")
+                    return "cuda"
+                else:
+                    logger.info("Using CPU for embeddings (no GPU available or disabled)")
+                    print("💻 Using CPU for embeddings")
+                    return "cpu"
+            except ImportError:
+                logger.warning("PyTorch not available, using CPU")
+                print("💻 PyTorch not available, using CPU")
+                return "cpu"
+        else:
+            # Use specified device
+            logger.info(f"Using specified device for embeddings: {config.embedding_device}")
+            print(f"🎯 Using specified device: {config.embedding_device}")
+            return config.embedding_device
+
+    def _log_llm_configuration(self, device_str):
+        """Log comprehensive LLM configuration"""
+        print("✅ LLM setup completed with configuration:")
+        print(f"   🎯 Model: {config.llm_model}")
+        print(f"   🌐 URL: {config.llm_url}")
+        print(f"   🌡️  Temperature: {config.llm_temperature}")
+        print(f"   📝 Max tokens: {config.llm_max_tokens}")
+        print(f"   ⏱️  Timeout: {config.llm_timeout}s")
+        print(f"   🔄 Retries: {config.llm_max_retries}")
+        print(f"   🧠 Embedding model: {config.embedding_model}")
+        print(f"   🚀 Embedding device: {device_str}")
+        print(f"   📏 Max embedding length: {config.embedding_max_length}")
+
+        logger.info(f"LLM Configuration Summary:")
+        logger.info(f"  Model: {config.llm_model} at {config.llm_url}")
+        logger.info(f"  Temperature: {config.llm_temperature}, Max tokens: {config.llm_max_tokens}")
+        logger.info(f"  Timeout: {config.llm_timeout}s, Retries: {config.llm_max_retries}")
+        logger.info(f"  Embedding: {config.embedding_model} on {device_str}")
+
+    def _test_llm_connection(self):
+        """Test LLM connection with a simple query"""
+        try:
+            logger.debug("Testing LLM connection...")
+            print("🔬 Testing LLM connection...")
+
+            # Simple test query
+            test_response = Settings.llm.complete("Hello")
+
+            if test_response and str(test_response).strip():
+                print("✅ LLM connection test successful")
+                logger.info("LLM connection test successful")
+                return True
+            else:
+                print("❌ LLM connection test failed - empty response")
+                logger.error("LLM connection test failed - empty response")
+                return False
+
+        except Exception as e:
+            print(f"❌ LLM connection test failed: {e}")
+            logger.error(f"LLM connection test failed: {e}")
+            return False
+
+    def show_configuration(self):
+        """Display current configuration (add this new method to CustomerServiceAgent)"""
+        print("\n⚙️  Current Configuration")
+        print("=" * 40)
+
+        print(f"🗄️  Database:")
+        print(f"   Host: {config.database_host}")
+        print(f"   Database: {config.database_name}")
+        print(f"   Pool Size: {config.database_pool_size}")
+
+        print(f"\n🤖 LLM:")
+        print(f"   URL: {config.llm_url}")
+        print(f"   Model: {config.llm_model}")
+        print(f"   Temperature: {config.llm_temperature}")
+        print(f"   Max Tokens: {config.llm_max_tokens}")
+        print(f"   Timeout: {config.llm_timeout}s")
+
+        print(f"\n🧠 Embeddings:")
+        print(f"   Model: {config.embedding_model}")
+        print(f"   Device: {config.embedding_device}")
+        print(f"   Max Length: {config.embedding_max_length}")
+
+        print(f"\n⚡ Performance:")
+        print(f"   Max Workers: {config.max_workers}")
+        print(f"   Cache TTL: {config.cache_ttl}s")
+        print(f"   Chunk Size: {config.chunk_size}")
+        print(f"   Memory Monitoring: {'✅' if config.enable_memory_monitoring else '❌'}")
+        print(f"   Query Caching: {'✅' if config.enable_query_caching else '❌'}")
+
+        print(f"\n📁 Paths:")
+        print(f"   Policy Files: {config.policy_files_dir}")
+        print(f"   HF Cache: {config.hf_hub_cache}")
+        print(f"   ST Cache: {config.st_cache}")
+        print(f"   Log File: {config.log_file}")
+
+    def _get_file_description(self, filename):
+        """Get description for support file"""
+        descriptions = {
+            'Customer Service.txt': 'Contact information and response times',
+            'FAQ.txt': 'Frequently asked questions',
+            'Return Policy.txt': 'Return and refund policies',
+            'Warranty Policy.txt': 'Comprehensive warranty coverage',
+            'Escalation Procedures.txt': 'Multi-level escalation framework',
+            'Technical Troubleshooting Guide.txt': 'Hardware/software support',
+            'Business Policies and Procedures.txt': 'Customer tiers and policies',
+            'Product Knowledge Database.txt': 'Product specifications',
+            'Order Management and Fulfillment.txt': 'Order lifecycle procedures'
+        }
+        return descriptions.get(filename, 'Support document')
+
     def get_support_files_from_user(self):
-        """Get support files from user input with policy_files directory support"""
+        """Get support files from user input with configurable policy_files directory"""
         print("\n📚 Support Document Configuration")
         print("=" * 50)
         print("Complete support document suite includes:")
-        print("1. Customer Service.txt - Contact information and response times")
-        print("2. FAQ.txt - Frequently asked questions")
-        print("3. Return Policy.txt - Return and refund policies")
-        print("4. Warranty Policy.txt - Comprehensive warranty coverage")
-        print("5. Escalation Procedures.txt - Multi-level escalation framework")
-        print("6. Technical Troubleshooting Guide.txt - Hardware/software support")
-        print("7. Business Policies and Procedures.txt - Customer tiers and policies")
-        print("8. Product Knowledge Database.txt - Product specifications")
-        print("9. Order Management and Fulfillment.txt - Order lifecycle procedures")
+        for i, file in enumerate(config.support_files_default, 1):
+            print(f"{i}. {file.replace('.txt', '')} - {self._get_file_description(file)}")
         print()
-        print("📁 Documents location: ./policy_files/")
+        print(f"📁 Documents location: ./{config.policy_files_dir}/")
         print()
 
-        # Define complete document suite with policy_files path
+        # Define complete document suite with configurable path
         complete_suite = [
-            'policy_files/Customer Service.txt',
-            'policy_files/FAQ.txt',
-            'policy_files/Return Policy.txt',
-            'policy_files/Warranty Policy.txt',
-            'policy_files/Escalation Procedures.txt',
-            'policy_files/Technical Troubleshooting Guide.txt',
-            'policy_files/Business Policies and Procedures.txt',
-            'policy_files/Product Knowledge Database.txt',
-            'policy_files/Order Management and Fulfillment.txt'
+            f"{config.policy_files_dir}/{file}" for file in config.support_files_default
         ]
 
-        # Basic document suite (original 3)
+        # Basic document suite (first 3 from config)
         basic_suite = [
-            'policy_files/Customer Service.txt',
-            'policy_files/FAQ.txt',
-            'policy_files/Return Policy.txt'
+            f"{config.policy_files_dir}/{file}" for file in config.support_files_default[:3]
         ]
 
         while True:
@@ -1300,7 +1774,7 @@ class CustomerServiceAgent:
         import os
 
         print("\n🔍 Checking policy_files directory...")
-        policy_dir = "policy_files"
+        policy_dir = "../src/policy_files"
 
         if not os.path.exists(policy_dir):
             print(f"❌ Directory '{policy_dir}' not found!")
@@ -1338,7 +1812,8 @@ class CustomerServiceAgent:
 
         # Check for any additional files
         all_files = os.listdir(policy_dir)
-        additional_files = [f for f in all_files if f not in expected_files and f.endswith(('.txt', '.pdf', '.doc', '.docx'))]
+        additional_files = [f for f in all_files if
+                            f not in expected_files and f.endswith(('.txt', '.pdf', '.doc', '.docx'))]
 
         if additional_files:
             print(f"\n📄 Additional files found:")
@@ -1366,7 +1841,7 @@ class CustomerServiceAgent:
         """Allow user to select specific files"""
         import os
 
-        policy_dir = "policy_files"
+        policy_dir = "../src/policy_files"
 
         if not os.path.exists(policy_dir):
             print(f"❌ Directory '{policy_dir}' not found!")
@@ -1444,7 +1919,7 @@ class CustomerServiceAgent:
 
                     for idx in indices:
                         if 1 <= idx <= len(available_files):
-                            file_name = available_files[idx-1][0]
+                            file_name = available_files[idx - 1][0]
                             file_path = os.path.join(policy_dir, file_name)
                             selected_files.append(file_path)
                         else:
@@ -1527,12 +2002,14 @@ class CustomerServiceAgent:
         print(f"✅ All {len(valid_files)} support file(s) validated successfully!")
         return valid_files
 
+    # UPDATE the setup_support_documents method to use config:
     def setup_support_documents(self):
-        """Setup vector index for customer support documents"""
+        """Setup vector index for customer support documents with configurable chunk size"""
         if not LLAMAINDEX_AVAILABLE:
             return False
 
         print("📚 Setting up support documents...")
+        logger.info("Setting up support documents with configurable parameters")
 
         try:
             # Get support files from user
@@ -1542,7 +2019,7 @@ class CustomerServiceAgent:
             valid_files = self.validate_support_files(requested_files)
             if not valid_files:
                 print("❌ Required support files not found. Exiting program.")
-                print("Please ensure all support documents are available and try again.")
+                logger.error("Required support files not found")
                 return False
 
             print(f"\n📁 Loading {len(valid_files)} support document(s):")
@@ -1550,34 +2027,40 @@ class CustomerServiceAgent:
                 file_size = os.path.getsize(file)
                 print(f"   - {file} ({file_size:,} bytes)")
 
-            # Setup vector index for support documents
+            # Setup vector index with configurable parameters
             try:
                 support_docs = SimpleDirectoryReader(input_files=valid_files).load_data()
                 print(f"📄 Loaded {len(support_docs)} document(s)")
+                logger.info(f"Loaded {len(support_docs)} support documents")
 
+                # Use configuration for chunking parameters
                 splitter = SentenceSplitter(
-                    chunk_size=1024,
-                    chunk_overlap=50  # Add overlap for better context
+                    chunk_size=config.chunk_size,      # From .env
+                    chunk_overlap=config.chunk_overlap  # From .env
                 )
                 support_nodes = splitter.get_nodes_from_documents(support_docs)
-                print(f"🔧 Created {len(support_nodes)} text chunks")
+                print(f"🔧 Created {len(support_nodes)} text chunks (size: {config.chunk_size}, overlap: {config.chunk_overlap})")
+                logger.info(f"Created {len(support_nodes)} text chunks with configurable parameters")
 
                 self.support_index = VectorStoreIndex(support_nodes)
 
                 print(f"✅ Support documents indexed successfully!")
                 print(f"   Documents: {len(valid_files)}")
                 print(f"   Chunks: {len(support_nodes)}")
+                print(f"   Chunk Size: {config.chunk_size} (configurable in .env)")
                 print(f"   Ready for vector search!")
+                logger.info("Support documents indexed successfully")
 
                 return True
 
             except Exception as e:
                 print(f"❌ Error processing support documents: {e}")
-                print("Please check document formats and content.")
+                logger.error(f"Error processing support documents: {e}")
                 return False
 
         except Exception as e:
             print(f"❌ Support documents setup failed: {e}")
+            logger.error(f"Support documents setup failed: {e}")
             return False
 
     def create_tools(self):
@@ -1766,37 +2249,42 @@ class CustomerServiceAgent:
             return False
 
     def create_agent(self):
-        """Create the enhanced AI agent with better configuration"""
+        """Create the enhanced AI agent with configuration from .env"""
         if not LLAMAINDEX_AVAILABLE or not self.tools:
             return False
 
-        print("🤖 Creating enhanced AI agent...")
+        print("🤖 Creating enhanced AI agent with environment configuration...")
+        logger.info("Creating AI agent with configurable parameters")
+
         try:
-            # Setup the Agent worker with optimized settings
+            # Setup the Agent worker with configurable settings
             agent_worker = ReActAgentWorker.from_tools(
                 self.tools,
                 llm=Settings.llm,
-                verbose=True,
-                max_iterations=15,  # Increased from default 10
-                allow_parallel_tool_calls=False  # Sequential for better reasoning
+                verbose=config.agent_verbose,                    # From .env
+                max_iterations=config.max_iterations,            # From .env
+                allow_parallel_tool_calls=config.agent_allow_parallel_tool_calls  # From .env
             )
 
-            # Create agent runner with enhanced configuration
+            # Create agent runner with configurable settings
             self.agent = AgentRunner(
                 agent_worker,
-                memory=None,  # Fresh context for each query
-                verbose=True
+                memory=None if not config.agent_memory_enabled else "buffer",  # From .env
+                verbose=config.agent_verbose                     # From .env
             )
 
             print("✅ Enhanced AI agent created successfully!")
-            print("   🔧 Max iterations: 15 (increased for complex scenarios)")
-            print("   🧠 Sequential reasoning: Enabled for better tool selection")
-            print("   📝 Fresh context: Each query starts clean")
-            print("   ⚡ Parallel processing: Available for expert scenarios")
+            print(f"   🔧 Max iterations: {config.max_iterations} (configurable in .env)")
+            print(f"   🧠 Verbose mode: {'Enabled' if config.agent_verbose else 'Disabled'}")
+            print(f"   📝 Memory: {'Enabled' if config.agent_memory_enabled else 'Disabled'}")
+            print(f"   ⚡ Parallel tools: {'Enabled' if config.agent_allow_parallel_tool_calls else 'Disabled'}")
+
+            logger.info(f"AI agent created with max_iterations={config.max_iterations}, verbose={config.agent_verbose}")
             return True
 
         except Exception as e:
             print(f"❌ Agent creation failed: {e}")
+            logger.error(f"Agent creation failed: {e}")
             return False
 
     def initialize(self):
@@ -1983,7 +2471,8 @@ class CustomerServiceAgent:
                     print("=" * 70)
                     self.run_query_with_options(scenario['query'])
                     if i < len(scenarios):
-                        cont = input(f"\nPress Enter to continue to next scenario (or 'stop' to finish): ").strip().lower()
+                        cont = input(
+                            f"\nPress Enter to continue to next scenario (or 'stop' to finish): ").strip().lower()
                         if cont == 'stop':
                             break
                 break
@@ -2037,7 +2526,8 @@ class CustomerServiceAgent:
             self.run_query_with_options(scenario['query'])
 
             if i < len(difficulty_scenarios):
-                cont = input(f"\nPress Enter to continue to next {difficulty.lower()} scenario (or 'stop' to finish): ").strip().lower()
+                cont = input(
+                    f"\nPress Enter to continue to next {difficulty.lower()} scenario (or 'stop' to finish): ").strip().lower()
                 if cont == 'stop':
                     break
 
@@ -2148,8 +2638,7 @@ class CustomerServiceAgent:
             ("Recent Orders (Last 10)", """
                                         SELECT order_id, customer_id, order_date, status, total_amount
                                         FROM orders
-                                        ORDER BY order_date DESC
-                                            LIMIT 10
+                                        ORDER BY order_date DESC LIMIT 10
                                         """)
         ]
 
@@ -2166,8 +2655,136 @@ class CustomerServiceAgent:
                 else:
                     print(f"  {results[0][0]}")
 
+    def health_check(self) -> Dict[str, str]:
+        """Comprehensive health check for production monitoring"""
+        health = {
+            'database': 'unknown',
+            'llm': 'unknown',
+            'embeddings': 'unknown',
+            'memory': 'unknown',
+            'circuit_breaker': 'unknown'
+        }
+
+        # Database health
+        try:
+            self.db_manager.execute_query("SELECT 1")
+            health['database'] = 'healthy'
+        except:
+            health['database'] = 'unhealthy'
+
+        # Circuit breaker status
+        if hasattr(self.db_manager, 'circuit_breaker'):
+            cb_state = self.db_manager.circuit_breaker.get_state()
+            health['circuit_breaker'] = cb_state['state']
+
+        # LLM health
+        try:
+            Settings.llm.complete("test")
+            health['llm'] = 'healthy'
+        except:
+            health['llm'] = 'unhealthy'
+
+        # Memory check
+        if PSUTIL_AVAILABLE:
+            memory_mb = psutil.Process().memory_info().rss / 1024 / 1024
+            health['memory'] = 'healthy' if memory_mb < 1000 else 'warning'
+            health['memory_usage'] = f"{memory_mb:.1f}MB"
+
+        return health
+
+    def show_health_check(self):
+        """Display system health check"""
+        print("\n🏥 System Health Check")
+        print("=" * 30)
+
+        health = self.health_check()
+        for component, status in health.items():
+            if component == 'memory_usage':
+                continue
+            icon = "✅" if status in ['healthy', 'CLOSED'] else "⚠️" if status == 'warning' else "❌"
+            print(f"{icon} {component.title()}: {status}")
+
+        if 'memory_usage' in health:
+            print(f"💾 Memory Usage: {health['memory_usage']}")
+
+    def show_performance_metrics(self):
+        """Display performance metrics"""
+        print("\n📈 Performance Metrics")
+        print("=" * 30)
+
+        metrics = self.get_performance_metrics()
+
+        print(f"🔧 Configuration:")
+        for key, value in metrics.get('config', {}).items():
+            print(f"   {key}: {value}")
+
+        if 'database_stats' in metrics:
+            stats = metrics['database_stats']
+            print(f"\n📊 Database Statistics:")
+            print(f"   Total Queries: {stats['total_queries']}")
+            print(f"   Success Rate: {stats['successful_queries']}/{stats['total_queries']}")
+            print(f"   Avg Query Time: {stats['avg_query_time']:.3f}s")
+
+        if 'cache_stats' in metrics:
+            print(f"\n💾 Cache Statistics:")
+            for method, stats in metrics['cache_stats'].items():
+                hit_rate = stats['hits'] / (stats['hits'] + stats['misses']) * 100 if (stats['hits'] + stats['misses']) > 0 else 0
+                print(f"   {method}: {hit_rate:.1f}% hit rate ({stats['hits']} hits, {stats['misses']} misses)")
+
+        if 'memory' in metrics:
+            mem = metrics['memory']
+            print(f"\n🧠 System Resources:")
+            print(f"   Memory: {mem['rss_mb']:.1f}MB")
+            print(f"   CPU: {mem['cpu_percent']:.1f}%")
+            print(f"   Threads: {mem['num_threads']}")
+
+    def clear_caches(self):
+        """Clear all caches"""
+        print("\n🧹 Clearing Caches...")
+
+        if hasattr(self, 'sync_tools'):
+            cleared = 0
+            for method_name in ['get_order_items', 'get_order_details']:
+                method = getattr(self.sync_tools, method_name, None)
+                if method and hasattr(method, 'clear_cache'):
+                    method.clear_cache()
+                    cleared += 1
+            print(f"✅ Cleared {cleared} method caches")
+
+        # Force garbage collection
+        if PSUTIL_AVAILABLE:
+            mem_before = psutil.Process().memory_info().rss / 1024 / 1024
+            gc.collect()
+            mem_after = psutil.Process().memory_info().rss / 1024 / 1024
+            print(f"✅ Garbage collection freed {mem_before - mem_after:.1f}MB")
+
+        print("🧹 Cache clearing complete!")
+
+    def reload_configuration(self):
+        """Reload configuration from .env file"""
+        print("\n🔄 Reloading Configuration...")
+
+        try:
+            # Reload .env file
+            from dotenv import load_dotenv
+            load_dotenv(override=True)  # Override existing environment variables
+
+            # Create new config instance
+            global config
+            config = Config()
+
+            print("✅ Configuration reloaded from .env file")
+            logger.info("Configuration reloaded from .env file")
+
+            # Show updated configuration
+            self.show_configuration()
+
+        except Exception as e:
+            print(f"❌ Failed to reload configuration: {e}")
+            logger.error(f"Failed to reload configuration: {e}")
+
     def main_menu(self):
-        """Main interactive menu"""
+        """Main interactive menu with configuration display"""
         if not self.initialize():
             print("❌ Initialization failed. Exiting.")
             return
@@ -2179,10 +2796,15 @@ class CustomerServiceAgent:
             print("1. 🎯 Run Predefined Scenarios")
             print("2. 💬 Custom Query")
             print("3. 📊 Database Statistics")
-            print("4. 🚪 Exit")
+            print("4. 🏥 Health Check")
+            print("5. 📈 Performance Metrics")
+            print("6. 🧹 Clear Caches")
+            print("7. ⚙️  Show Configuration")  # NEW OPTION
+            print("8. 🔄 Reload Configuration")  # NEW OPTION
+            print("9. 🚪 Exit")
             print("=" * 60)
 
-            choice = input("Select an option (1-4): ").strip()
+            choice = input("Select an option (1-9): ").strip()
 
             if choice == '1':
                 self.run_predefined_scenarios()
@@ -2191,10 +2813,20 @@ class CustomerServiceAgent:
             elif choice == '3':
                 self.show_database_stats()
             elif choice == '4':
+                self.show_health_check()
+            elif choice == '5':
+                self.show_performance_metrics()
+            elif choice == '6':
+                self.clear_caches()
+            elif choice == '7':
+                self.show_configuration()  # NEW METHOD
+            elif choice == '8':
+                self.reload_configuration()  # NEW METHOD
+            elif choice == '9':
                 print("\n👋 Goodbye!")
                 break
             else:
-                print("❌ Invalid choice. Please select 1-4.")
+                print("❌ Invalid choice. Please select 1-9.")
 
         # Cleanup
         print("🧹 Cleaning up resources...")
@@ -2265,27 +2897,43 @@ class CustomerServiceAgent:
             print("✅ Simple query detected, using standard execution...")
             self.run_query(query)
 
-    def get_performance_metrics(self):
-        """Get performance metrics for the current session"""
+    def get_performance_metrics(self) -> Dict[str, Any]:
+        """Enhanced performance metrics"""
         metrics = {
             'database_type': 'Unknown',
             'embedding_device': 'Unknown',
             'tools_count': len(self.tools) if self.tools else 0,
-            'parallel_processing': hasattr(self, 'async_tools') and self.async_tools is not None
+            'parallel_processing': hasattr(self, 'async_tools') and self.async_tools is not None,
+            'config': {
+                'cache_ttl': config.cache_ttl,
+                'max_workers': config.max_workers,
+                'query_timeout': config.query_timeout
+            }
         }
 
         # Database metrics
-        if hasattr(self, 'db_manager'):
+        if hasattr(self, 'db_manager') and hasattr(self.db_manager, 'query_stats'):
+            metrics['database_stats'] = self.db_manager.query_stats.copy()
             conn_info = self.db_manager.get_connection_info()
             metrics['database_type'] = conn_info.get('type', 'Unknown')
 
-        # LLM metrics
-        if hasattr(Settings, 'embed_model'):
-            try:
-                device = getattr(Settings.embed_model, 'device', 'Unknown')
-                metrics['embedding_device'] = str(device)
-            except:
-                metrics['embedding_device'] = 'CPU (fallback)'
+        # Cache metrics
+        if hasattr(self, 'sync_tools'):
+            cache_stats = {}
+            for method_name in ['get_order_items', 'get_order_details']:
+                method = getattr(self.sync_tools, method_name, None)
+                if method and hasattr(method, 'cache_stats'):
+                    cache_stats[method_name] = method.cache_stats()
+            metrics['cache_stats'] = cache_stats
+
+        # Memory metrics
+        if PSUTIL_AVAILABLE:
+            process = psutil.Process()
+            metrics['memory'] = {
+                'rss_mb': process.memory_info().rss / 1024 / 1024,
+                'cpu_percent': process.cpu_percent(),
+                'num_threads': process.num_threads()
+            }
 
         return metrics
 
@@ -2303,6 +2951,7 @@ class CustomerServiceAgent:
         except:
             pass
 
+
 def main():
     """Main function"""
     print("🚀 Customer Service AI Agent")
@@ -2315,6 +2964,7 @@ def main():
         print("\n\n👋 Interrupted by user. Goodbye!")
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")
+
 
 if __name__ == "__main__":
     main()

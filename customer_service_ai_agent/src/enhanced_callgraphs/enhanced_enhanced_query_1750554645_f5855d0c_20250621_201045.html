@@ -1,0 +1,1676 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Enhanced Query Execution Graph - enhanced_query_1750554645_f5855d0c</title>
+        <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                min-height: 100vh;
+            }
+            
+            .container {
+                display: grid;
+                grid-template-columns: 300px 1fr;
+                grid-template-rows: auto 1fr;
+                height: 100vh;
+                gap: 10px;
+                padding: 10px;
+            }
+            
+            .header {
+                grid-column: 1 / -1;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 15px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            }
+            
+            .header h1 {
+                font-size: 28px;
+                margin-bottom: 10px;
+                font-weight: 300;
+            }
+            
+            .metadata {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+                margin-top: 15px;
+            }
+            
+            .metric-card {
+                background: rgba(255,255,255,0.2);
+                padding: 15px;
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+            }
+            
+            .metric-value {
+                font-size: 24px;
+                font-weight: bold;
+                margin-top: 5px;
+            }
+            
+            .sidebar {
+                background: white;
+                border-radius: 15px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .sidebar-section {
+                padding: 20px;
+                border-bottom: 1px solid #eee;
+            }
+            
+            .sidebar-section h3 {
+                margin-bottom: 15px;
+                color: #333;
+                font-size: 16px;
+            }
+            
+            .filter-group {
+                margin-bottom: 15px;
+            }
+            
+            .filter-group label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: 500;
+                color: #555;
+            }
+            
+            .filter-input {
+                width: 100%;
+                padding: 8px 12px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 14px;
+                transition: border-color 0.3s;
+            }
+            
+            .filter-input:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+            
+            .btn {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                margin: 5px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: all 0.3s;
+            }
+            
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            }
+            
+            .btn-small {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .performance-indicator {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                margin-right: 8px;
+            }
+            
+            .excellent { background-color: #4CAF50; }
+            .good { background-color: #8BC34A; }
+            .average { background-color: #FFC107; }
+            .slow { background-color: #FF9800; }
+            .critical { background-color: #F44336; }
+            
+            .main-view {
+                background: white;
+                border-radius: 15px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+                overflow: hidden;
+                position: relative;
+            }
+            
+            .view-tabs {
+                display: flex;
+                background: #f8f9fa;
+                border-bottom: 1px solid #eee;
+            }
+            
+            .tab {
+                padding: 15px 25px;
+                cursor: pointer;
+                border-bottom: 3px solid transparent;
+                transition: all 0.3s;
+            }
+            
+            .tab.active {
+                background: white;
+                border-bottom-color: #667eea;
+                color: #667eea;
+            }
+            
+            .tab:hover {
+                background: #e9ecef;
+            }
+            
+            #network {
+                width: 100%;
+                height: calc(100vh - 200px);
+            }
+            
+            .analytics-panel {
+                display: none;
+                padding: 20px;
+                height: calc(100vh - 200px);
+                overflow-y: auto;
+            }
+            
+            .analytics-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .chart-container {
+                background: #f8f9fa;
+                border-radius: 10px;
+                padding: 20px;
+                height: 300px;
+            }
+            
+            .recommendations {
+                background: #e8f5e8;
+                border-left: 4px solid #4CAF50;
+                padding: 15px;
+                border-radius: 8px;
+                margin-top: 20px;
+            }
+            
+            .bottlenecks {
+                background: #ffeaa7;
+                border-left: 4px solid #fdcb6e;
+                padding: 15px;
+                border-radius: 8px;
+                margin-top: 20px;
+            }
+            
+            .search-highlight {
+                background-color: #ffeb3b !important;
+                animation: pulse 1s infinite;
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.7; }
+                100% { opacity: 1; }
+            }
+            
+            .floating-controls {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                background: white;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                padding: 10px;
+                z-index: 1000;
+            }
+            
+            .performance-badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 10px;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-left: 5px;
+            }
+            
+            .minimap {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                width: 200px;
+                height: 150px;
+                background: rgba(255,255,255,0.9);
+                border-radius: 8px;
+                border: 2px solid #ddd;
+                overflow: hidden;
+            }
+            
+            .node-details-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: none;
+                justify-content: center;
+                align-items: center;
+                z-index: 2000;
+            }
+            
+            .modal-content {
+                background: white;
+                border-radius: 15px;
+                padding: 30px;
+                max-width: 600px;
+                max-height: 80vh;
+                overflow-y: auto;
+                position: relative;
+            }
+            
+            .close-modal {
+                position: absolute;
+                top: 15px;
+                right: 20px;
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #999;
+            }
+            
+            .progress-bar {
+                width: 100%;
+                height: 4px;
+                background: #e0e0e0;
+                border-radius: 2px;
+                overflow: hidden;
+                margin: 10px 0;
+            }
+            
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #667eea, #764ba2);
+                transition: width 0.3s ease;
+            }
+            
+            @media (max-width: 768px) {
+                .container {
+                    grid-template-columns: 1fr;
+                    grid-template-rows: auto auto 1fr;
+                }
+                
+                .sidebar {
+                    order: -1;
+                    max-height: 300px;
+                    overflow-y: auto;
+                }
+                
+                .analytics-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🚀 Enhanced Query Execution Graph</h1>
+                <div class="metadata">
+                    <div class="metric-card">
+                        <div>Query ID</div>
+                        <div class="metric-value">enhanced_query_17505...</div>
+                    </div>
+                    <div class="metric-card">
+                        <div>Total Time</div>
+                        <div class="metric-value">0.00s</div>
+                    </div>
+                    <div class="metric-card">
+                        <div>Cache Hit Ratio</div>
+                        <div class="metric-value">33.3%</div>
+                    </div>
+                    <div class="metric-card">
+                        <div>Nodes</div>
+                        <div class="metric-value">7</div>
+                    </div>
+                    <div class="metric-card">
+                        <div>Errors</div>
+                        <div class="metric-value">1</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3>🔍 Search & Filter</h3>
+                    <div class="filter-group">
+                        <label>Search Nodes</label>
+                        <input type="text" class="filter-input" id="search-input" placeholder="Search by name, type, or content...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Filter by Performance</label>
+                        <select class="filter-input" id="performance-filter">
+                            <option value="">All Performance Levels</option>
+                            <option value="excellent">🟢 Excellent</option>
+                            <option value="good">🟡 Good</option>
+                            <option value="average">🟠 Average</option>
+                            <option value="slow">🔴 Slow</option>
+                            <option value="critical">⚫ Critical</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Filter by Type</label>
+                        <select class="filter-input" id="type-filter">
+                            <option value="">All Types</option>
+                            <option value="action_execution">Action Execution</option>
+                            <option value="cache_hit">Cache Hit</option>
+                            <option value="thinking">Thinking</option>
+                            <option value="error">Errors Only</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-small" onclick="clearFilters()">Clear Filters</button>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>⚡ Quick Actions</h3>
+                    <button class="btn btn-small" onclick="focusCriticalPath()">🎯 Critical Path</button>
+                    <button class="btn btn-small" onclick="focusBottlenecks()">🐌 Bottlenecks</button>
+                    <button class="btn btn-small" onclick="focusErrors()">⚠️ Errors</button>
+                    <button class="btn btn-small" onclick="focusCacheHits()">💾 Cache Hits</button>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>🎨 Layout Options</h3>
+                    <select class="filter-input" id="layout-selector" onchange="changeLayout()">
+                        <option value="hierarchical">Hierarchical</option>
+                        <option value="force">Force-Directed</option>
+                        <option value="circular">Circular</option>
+                        <option value="timeline">Timeline</option>
+                    </select>
+                    <button class="btn btn-small" onclick="togglePhysics()">⚡ Toggle Physics</button>
+                    <button class="btn btn-small" onclick="fitNetwork()">🔍 Fit to Screen</button>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>📊 Performance Overview</h3>
+                    <div id="performance-summary"></div>
+                </div>
+            </div>
+            
+            <div class="main-view">
+                <div class="view-tabs">
+                    <div class="tab active" onclick="switchTab('graph')">📊 Graph View</div>
+                    <div class="tab" onclick="switchTab('analytics')">📈 Analytics</div>
+                    <div class="tab" onclick="switchTab('timeline')">⏱️ Timeline</div>
+                </div>
+                
+                <div id="graph-view">
+                    <div id="network"></div>
+                    <div class="floating-controls">
+                        <button class="btn btn-small" onclick="exportImage()">📷 Export</button>
+                        <button class="btn btn-small" onclick="toggleMinimap()">🗺️ Minimap</button>
+                        <button class="btn btn-small" onclick="resetView()">🔄 Reset</button>
+                    </div>
+                    <div class="minimap" id="minimap" style="display: none;"></div>
+                </div>
+                
+                <div id="analytics-view" class="analytics-panel">
+                    <div class="analytics-grid">
+                        <div class="chart-container">
+                            <canvas id="performance-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="execution-time-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="cache-efficiency-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="error-distribution-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="recommendations">
+                        <h3>💡 Recommendations</h3>
+                        <ul id="recommendations-list"></ul>
+                    </div>
+                    
+                    <div class="bottlenecks">
+                        <h3>🐌 Detected Bottlenecks</h3>
+                        <div id="bottlenecks-list"></div>
+                    </div>
+                </div>
+                
+                <div id="timeline-view" class="analytics-panel">
+                    <div class="chart-container" style="height: 500px;">
+                        <canvas id="timeline-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Node Details Modal -->
+        <div class="node-details-modal" id="node-modal">
+            <div class="modal-content">
+                <button class="close-modal" onclick="closeNodeModal()">&times;</button>
+                <div id="modal-content"></div>
+            </div>
+        </div>
+        
+        <script>
+            // Graph data
+            const graphData = {
+  "nodes": [
+    {
+      "id": "query_start_109434ff",
+      "label": "Query Received",
+      "title": "Node: Query Received\\nType: query_start\\nStatus: in_progress\\nPerformance: average\\nDescription: Query: What is the return policy for order 1001?",
+      "color": {
+        "background": "#4CAF50",
+        "border": "#4CAF50"
+      },
+      "shape": "star",
+      "size": 30,
+      "font": {
+        "size": 10,
+        "color": "#333"
+      },
+      "physics": true,
+      "borderWidth": 3,
+      "shadow": {
+        "enabled": true,
+        "color": "rgba(0,0,0,0.3)"
+      },
+      "performance_level": "average",
+      "execution_time": 0.0,
+      "memory_usage": 0.0,
+      "error_count": 0
+    },
+    {
+      "id": "thinking_af94813c",
+      "label": "\ud83d\udfe2 AI Thinking Process",
+      "title": "Node: AI Thinking Process\\nType: thinking\\nStatus: completed\\nPerformance: excellent\\nExecution Time: 0.000s\\nDescription: Reasoning: Analyzing query to determine required data",
+      "color": {
+        "background": "#4CAF50",
+        "border": "#388E3C"
+      },
+      "shape": "ellipse",
+      "size": 20,
+      "font": {
+        "size": 10,
+        "color": "#333"
+      },
+      "physics": true,
+      "borderWidth": 2,
+      "shadow": {
+        "enabled": true,
+        "color": "rgba(0,0,0,0.3)"
+      },
+      "performance_level": "excellent",
+      "execution_time": 5e-06,
+      "memory_usage": 0.0,
+      "error_count": 0
+    },
+    {
+      "id": "action_execution_b17fe154",
+      "label": "\ud83d\udfe2 Execute: get_orde...",
+      "title": "Node: Execute: get_order_details\\nType: action_execution\\nStatus: completed\\nPerformance: excellent\\nExecution Time: 0.000s\\nMemory Usage: 15.50MB\\nCPU Usage: 25.0%\\nDescription: Running get_order_details",
+      "color": {
+        "background": "#4CAF50",
+        "border": "#388E3C"
+      },
+      "shape": "square",
+      "size": 20,
+      "font": {
+        "size": 10,
+        "color": "#333"
+      },
+      "physics": true,
+      "borderWidth": 2,
+      "shadow": {
+        "enabled": true,
+        "color": "rgba(0,0,0,0.3)"
+      },
+      "performance_level": "excellent",
+      "execution_time": 5e-06,
+      "memory_usage": 15.5,
+      "error_count": 0
+    },
+    {
+      "id": "cache_hit_6c76851a",
+      "label": "\ud83d\udfe2 Cache Hit\nget_ret...",
+      "title": "Node: Cache Hit\nget_return_policy\\nType: cache_hit\\nStatus: completed\\nPerformance: excellent\\nExecution Time: 0.000s\\nMemory Usage: 2.10MB\\nCPU Usage: 5.0%\\nDescription: Running get_return_policy from cache",
+      "color": {
+        "background": "#4CAF50",
+        "border": "#388E3C"
+      },
+      "shape": "circle",
+      "size": 16,
+      "font": {
+        "size": 10,
+        "color": "#333"
+      },
+      "physics": true,
+      "borderWidth": 2,
+      "shadow": {
+        "enabled": true,
+        "color": "rgba(0,0,0,0.3)"
+      },
+      "performance_level": "excellent",
+      "execution_time": 3e-06,
+      "memory_usage": 2.1,
+      "error_count": 0
+    },
+    {
+      "id": "action_execution_5f787a36",
+      "label": "\u26a0\ufe0f Execute: complex_...",
+      "title": "Node: Execute: complex_calculation\\nType: action_execution\\nStatus: completed\\nPerformance: average\\nExecution Time: 0.000s\\nMemory Usage: 150.00MB\\nCPU Usage: 85.0%\\nErrors: 2\\nDescription: Running complex_calculation",
+      "color": {
+        "background": "#3F51B5",
+        "border": "#3F51B5"
+      },
+      "shape": "square",
+      "size": 25,
+      "font": {
+        "size": 10,
+        "color": "#333"
+      },
+      "physics": true,
+      "borderWidth": 2,
+      "shadow": {
+        "enabled": true,
+        "color": "rgba(0,0,0,0.3)"
+      },
+      "performance_level": "average",
+      "execution_time": 3e-06,
+      "memory_usage": 150.0,
+      "error_count": 2
+    },
+    {
+      "id": "error_4119acdf",
+      "label": "\ud83d\udfe2 Error: connection...",
+      "title": "Node: Error: connection_error\\nType: error\\nStatus: failed\\nPerformance: excellent\\nExecution Time: 0.000s\\nDescription: Error occurred: Database connection timeout",
+      "color": {
+        "background": "#4CAF50",
+        "border": "#388E3C"
+      },
+      "shape": "triangleDown",
+      "size": 30,
+      "font": {
+        "size": 10,
+        "color": "#333"
+      },
+      "physics": true,
+      "borderWidth": 3,
+      "shadow": {
+        "enabled": true,
+        "color": "rgba(0,0,0,0.3)"
+      },
+      "performance_level": "excellent",
+      "execution_time": 1e-06,
+      "memory_usage": 0.0,
+      "error_count": 0
+    },
+    {
+      "id": "final_response_b58d0679",
+      "label": "\ud83d\udfe2 Final Response",
+      "title": "Node: Final Response\\nType: final_response\\nStatus: completed\\nPerformance: excellent\\nExecution Time: 0.000s\\nDescription: Query completed: Order 1001 has a 30-day return policy for the laptop purchased.",
+      "color": {
+        "background": "#4CAF50",
+        "border": "#388E3C"
+      },
+      "shape": "star",
+      "size": 20,
+      "font": {
+        "size": 10,
+        "color": "#333"
+      },
+      "physics": true,
+      "borderWidth": 2,
+      "shadow": {
+        "enabled": true,
+        "color": "rgba(0,0,0,0.3)"
+      },
+      "performance_level": "excellent",
+      "execution_time": 1e-06,
+      "memory_usage": 0.0,
+      "error_count": 0
+    }
+  ],
+  "edges": [
+    {
+      "from": "query_start_109434ff",
+      "to": "thinking_af94813c",
+      "label": "thinks",
+      "arrows": "to",
+      "font": {
+        "size": 10
+      },
+      "color": {
+        "color": "#FF5722"
+      },
+      "width": 4,
+      "smooth": {
+        "type": "continuous"
+      },
+      "shadow": true
+    },
+    {
+      "from": "thinking_af94813c",
+      "to": "action_execution_b17fe154",
+      "label": "executes",
+      "arrows": "to",
+      "font": {
+        "size": 10
+      },
+      "color": {
+        "color": "#FF5722"
+      },
+      "width": 4,
+      "smooth": {
+        "type": "continuous"
+      },
+      "shadow": true
+    },
+    {
+      "from": "action_execution_b17fe154",
+      "to": "cache_hit_6c76851a",
+      "label": "cache hit",
+      "arrows": "to",
+      "font": {
+        "size": 10
+      },
+      "color": {
+        "color": "#FF5722"
+      },
+      "width": 4,
+      "smooth": {
+        "type": "continuous"
+      },
+      "shadow": true
+    },
+    {
+      "from": "cache_hit_6c76851a",
+      "to": "action_execution_5f787a36",
+      "label": "executes",
+      "arrows": "to",
+      "font": {
+        "size": 10
+      },
+      "color": {
+        "color": "#FF5722"
+      },
+      "width": 4,
+      "smooth": {
+        "type": "continuous"
+      },
+      "shadow": true
+    },
+    {
+      "from": "action_execution_5f787a36",
+      "to": "error_4119acdf",
+      "label": "encounters error",
+      "arrows": "to",
+      "font": {
+        "size": 10
+      },
+      "color": {
+        "color": "#FF5722"
+      },
+      "width": 4,
+      "smooth": {
+        "type": "continuous"
+      },
+      "shadow": true
+    },
+    {
+      "from": "error_4119acdf",
+      "to": "final_response_b58d0679",
+      "label": "produces",
+      "arrows": "to",
+      "font": {
+        "size": 10
+      },
+      "color": {
+        "color": "#FF5722"
+      },
+      "width": 4,
+      "smooth": {
+        "type": "continuous"
+      },
+      "shadow": true
+    }
+  ],
+  "metadata": {
+    "query_id": "enhanced_query_1750554645_f5855d0c",
+    "generated_at": "2025-06-21T20:10:45.389096",
+    "total_nodes": 7,
+    "total_edges": 6,
+    "execution_time": 0.001114,
+    "cache_hit_ratio": 0.3333333333333333,
+    "total_errors": 1,
+    "peak_memory": 0.0,
+    "bottlenecks": [
+      {
+        "node_id": "action_execution_5f787a36",
+        "type": "error_prone",
+        "error_count": 2,
+        "severity": "medium"
+      }
+    ]
+  },
+  "analytics": {
+    "performance_summary": {
+      "total_execution_time": 1.8e-05,
+      "average_execution_time": 2.5714285714285716e-06,
+      "cache_hit_ratio": 0.3333333333333333,
+      "error_rate": 0.14285714285714285,
+      "performance_distribution": {
+        "excellent": 5,
+        "good": 0,
+        "average": 2,
+        "slow": 0,
+        "critical": 0
+      },
+      "bottleneck_count": 1
+    },
+    "recommendations": [
+      "Consider implementing more aggressive caching strategies",
+      "Review error handling and implement retry mechanisms",
+      "Optimize bottleneck operations identified in the graph"
+    ]
+  }
+};
+            
+            // Initialize variables
+            let network;
+            let originalNodes;
+            let originalEdges;
+            let currentView = 'graph';
+            let physicsEnabled = true;
+            let minimapVisible = false;
+            
+            // Initialize the application
+            document.addEventListener('DOMContentLoaded', function() {
+                initializeNetwork();
+                initializeFilters();
+                initializeAnalytics();
+                updatePerformanceSummary();
+            });
+            
+            function initializeNetwork() {
+                const container = document.getElementById('network');
+                originalNodes = new vis.DataSet(graphData.nodes);
+                originalEdges = new vis.DataSet(graphData.edges);
+                
+                const options = {
+                    layout: {
+                        hierarchical: {
+                            enabled: true,
+                            direction: 'UD',
+                            sortMethod: 'directed',
+                            levelSeparation: 120,
+                            nodeSpacing: 200,
+                            treeSpacing: 300
+                        }
+                    },
+                    physics: {
+                        enabled: true,
+                        hierarchicalRepulsion: {
+                            centralGravity: 0.0,
+                            springLength: 120,
+                            springConstant: 0.01,
+                            nodeDistance: 150,
+                            damping: 0.09
+                        },
+                        maxVelocity: 50,
+                        minVelocity: 0.1,
+                        solver: 'hierarchicalRepulsion',
+                        stabilization: {
+                            enabled: true,
+                            iterations: 1000,
+                            updateInterval: 25
+                        }
+                    },
+                    nodes: {
+                        font: { size: 12, color: '#333', face: 'Arial' },
+                        borderWidth: 2,
+                        shadow: {
+                            enabled: true,
+                            color: 'rgba(0,0,0,0.2)',
+                            size: 10,
+                            x: 2,
+                            y: 2
+                        },
+                        chosen: {
+                            node: function(values, id, selected, hovering) {
+                                values.shadow = true;
+                                values.shadowSize = 15;
+                                values.shadowColor = 'rgba(0,0,0,0.3)';
+                            }
+                        },
+                        scaling: {
+                            min: 15,
+                            max: 50
+                        }
+                    },
+                    edges: {
+                        font: { size: 11, color: '#555' },
+                        width: 2,
+                        shadow: true,
+                        smooth: {
+                            type: 'continuous',
+                            forceDirection: 'none',
+                            roundness: 0.5
+                        },
+                        arrows: {
+                            to: {
+                                enabled: true,
+                                scaleFactor: 1.2
+                            }
+                        }
+                    },
+                    interaction: {
+                        hover: true,
+                        tooltipDelay: 200,
+                        hideEdgesOnDrag: false,
+                        hideNodesOnDrag: false,
+                        selectConnectedEdges: false
+                    },
+                    configure: {
+                        enabled: false
+                    }
+                };
+                
+                network = new vis.Network(container, {
+                    nodes: originalNodes,
+                    edges: originalEdges
+                }, options);
+                
+                // Event listeners
+                network.on("click", handleNodeClick);
+                network.on("hoverNode", handleNodeHover);
+                network.on("blurNode", handleNodeBlur);
+                network.on("stabilizationIterationsDone", function() {
+                    console.log("Network stabilized");
+                });
+                
+                // Auto-fit after stabilization
+                network.once("stabilizationIterationsDone", function() {
+                    network.fit({
+                        animation: {
+                            duration: 1000,
+                            easingFunction: 'easeInOutQuart'
+                        }
+                    });
+                });
+            }
+            
+            function initializeFilters() {
+                const searchInput = document.getElementById('search-input');
+                const performanceFilter = document.getElementById('performance-filter');
+                const typeFilter = document.getElementById('type-filter');
+                
+                searchInput.addEventListener('input', debounce(handleSearch, 300));
+                performanceFilter.addEventListener('change', handleFilters);
+                typeFilter.addEventListener('change', handleFilters);
+            }
+            
+            function initializeAnalytics() {
+                renderPerformanceChart();
+                renderExecutionTimeChart();
+                renderCacheEfficiencyChart();
+                renderErrorDistributionChart();
+                renderTimelineChart();
+                updateRecommendations();
+                updateBottlenecks();
+            }
+            
+            function handleNodeClick(params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    const node = graphData.nodes.find(n => n.id === nodeId);
+                    showNodeDetailsModal(node);
+                    highlightNodePath(nodeId);
+                }
+            }
+            
+            function handleNodeHover(params) {
+                document.body.style.cursor = 'pointer';
+            }
+            
+            function handleNodeBlur(params) {
+                document.body.style.cursor = 'default';
+            }
+            
+            function handleSearch(event) {
+                const searchTerm = event.target.value.toLowerCase();
+                if (!searchTerm) {
+                    resetHighlight();
+                    return;
+                }
+                
+                const matchingNodes = graphData.nodes.filter(node => 
+                    node.label.toLowerCase().includes(searchTerm) ||
+                    node.title.toLowerCase().includes(searchTerm) ||
+                    node.performance_level.toLowerCase().includes(searchTerm)
+                );
+                
+                highlightNodes(matchingNodes.map(n => n.id));
+            }
+            
+            function handleFilters() {
+                const performanceLevel = document.getElementById('performance-filter').value;
+                const nodeType = document.getElementById('type-filter').value;
+                
+                let filteredNodes = graphData.nodes;
+                
+                if (performanceLevel) {
+                    filteredNodes = filteredNodes.filter(node => 
+                        node.performance_level === performanceLevel
+                    );
+                }
+                
+                if (nodeType) {
+                    if (nodeType === 'error') {
+                        filteredNodes = filteredNodes.filter(node => 
+                            node.error_count > 0 || node.shape === 'triangleDown'
+                        );
+                    } else {
+                        filteredNodes = filteredNodes.filter(node => 
+                            node.title.toLowerCase().includes(nodeType.replace('_', ' '))
+                        );
+                    }
+                }
+                
+                if (performanceLevel || nodeType) {
+                    highlightNodes(filteredNodes.map(n => n.id));
+                } else {
+                    resetHighlight();
+                }
+            }
+            
+            function highlightNodes(nodeIds) {
+                const updatedNodes = graphData.nodes.map(node => ({
+                    ...node,
+                    color: nodeIds.includes(node.id) ? 
+                        { background: '#ffeb3b', border: '#f57f17' } : 
+                        { background: '#e0e0e0', border: '#bdbdbd' },
+                    font: { ...node.font, color: nodeIds.includes(node.id) ? '#333' : '#999' }
+                }));
+                
+                network.setData({
+                    nodes: updatedNodes,
+                    edges: originalEdges
+                });
+            }
+            
+            function resetHighlight() {
+                network.setData({
+                    nodes: originalNodes,
+                    edges: originalEdges
+                });
+            }
+            
+            function highlightNodePath(nodeId) {
+                const connectedNodes = network.getConnectedNodes(nodeId);
+                const connectedEdges = network.getConnectedEdges(nodeId);
+                
+                const highlightNodes = [nodeId, ...connectedNodes];
+                highlightNodes(highlightNodes);
+            }
+            
+            function focusCriticalPath() {
+                const criticalEdges = graphData.edges.filter(edge => edge.color && edge.color.color === '#FF5722');
+                const criticalNodeIds = new Set();
+                
+                criticalEdges.forEach(edge => {
+                    criticalNodeIds.add(edge.from);
+                    criticalNodeIds.add(edge.to);
+                });
+                
+                if (criticalNodeIds.size > 0) {
+                    highlightNodes(Array.from(criticalNodeIds));
+                    network.fit({
+                        nodes: Array.from(criticalNodeIds),
+                        animation: { duration: 1000 }
+                    });
+                }
+            }
+            
+            function focusBottlenecks() {
+                const bottleneckNodes = graphData.metadata.bottlenecks.map(b => b.node_id);
+                if (bottleneckNodes.length > 0) {
+                    highlightNodes(bottleneckNodes);
+                    network.fit({
+                        nodes: bottleneckNodes,
+                        animation: { duration: 1000 }
+                    });
+                }
+            }
+            
+            function focusErrors() {
+                const errorNodes = graphData.nodes
+                    .filter(node => node.error_count > 0 || node.shape === 'triangleDown')
+                    .map(node => node.id);
+                
+                if (errorNodes.length > 0) {
+                    highlightNodes(errorNodes);
+                    network.fit({
+                        nodes: errorNodes,
+                        animation: { duration: 1000 }
+                    });
+                }
+            }
+            
+            function focusCacheHits() {
+                const cacheNodes = graphData.nodes
+                    .filter(node => node.shape === 'circle')
+                    .map(node => node.id);
+                
+                if (cacheNodes.length > 0) {
+                    highlightNodes(cacheNodes);
+                    network.fit({
+                        nodes: cacheNodes,
+                        animation: { duration: 1000 }
+                    });
+                }
+            }
+            
+            function changeLayout() {
+                const layout = document.getElementById('layout-selector').value;
+                let layoutOptions = {};
+                
+                switch(layout) {
+                    case 'hierarchical':
+                        layoutOptions = {
+                            hierarchical: {
+                                enabled: true,
+                                direction: 'UD',
+                                sortMethod: 'directed'
+                            }
+                        };
+                        break;
+                    case 'force':
+                        layoutOptions = {
+                            hierarchical: { enabled: false }
+                        };
+                        break;
+                    case 'circular':
+                        layoutOptions = {
+                            hierarchical: { enabled: false }
+                        };
+                        break;
+                    case 'timeline':
+                        layoutOptions = {
+                            hierarchical: {
+                                enabled: true,
+                                direction: 'LR',
+                                sortMethod: 'directed'
+                            }
+                        };
+                        break;
+                }
+                
+                network.setOptions({ layout: layoutOptions });
+            }
+            
+            function switchTab(tabName) {
+                // Update tab appearance
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                event.target.classList.add('active');
+                
+                // Show/hide content
+                document.getElementById('graph-view').style.display = 
+                    tabName === 'graph' ? 'block' : 'none';
+                document.getElementById('analytics-view').style.display = 
+                    tabName === 'analytics' ? 'block' : 'none';
+                document.getElementById('timeline-view').style.display = 
+                    tabName === 'timeline' ? 'block' : 'none';
+                
+                currentView = tabName;
+                
+                if (tabName === 'graph') {
+                    setTimeout(() => network.fit(), 100);
+                }
+            }
+            
+            function togglePhysics() {
+                physicsEnabled = !physicsEnabled;
+                network.setOptions({ physics: { enabled: physicsEnabled } });
+            }
+            
+            function fitNetwork() {
+                network.fit({
+                    animation: {
+                        duration: 1000,
+                        easingFunction: 'easeInOutQuart'
+                    }
+                });
+            }
+            
+            function resetView() {
+                resetHighlight();
+                fitNetwork();
+                document.getElementById('search-input').value = '';
+                document.getElementById('performance-filter').value = '';
+                document.getElementById('type-filter').value = '';
+            }
+            
+            function clearFilters() {
+                resetView();
+            }
+            
+            function exportImage() {
+                const canvas = document.querySelector('#network canvas');
+                if (canvas) {
+                    const link = document.createElement('a');
+                    link.download = 'enhanced_query_graph.png';
+                    link.href = canvas.toDataURL('image/png', 1.0);
+                    link.click();
+                }
+            }
+            
+            function toggleMinimap() {
+                const minimap = document.getElementById('minimap');
+                minimapVisible = !minimapVisible;
+                minimap.style.display = minimapVisible ? 'block' : 'none';
+            }
+            
+            function showNodeDetailsModal(node) {
+                const modal = document.getElementById('node-modal');
+                const content = document.getElementById('modal-content');
+                
+                content.innerHTML = `
+                    <h2>${node.label}</h2>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${(node.execution_time / 5) * 100}%"></div>
+                    </div>
+                    <p><strong>Performance Level:</strong> 
+                        <span class="performance-indicator ${node.performance_level}"></span>
+                        ${node.performance_level.toUpperCase()}
+                    </p>
+                    <p><strong>Execution Time:</strong> ${node.execution_time}s</p>
+                    <p><strong>Memory Usage:</strong> ${node.memory_usage}MB</p>
+                    <p><strong>Error Count:</strong> ${node.error_count}</p>
+                    <p><strong>Type:</strong> ${node.shape}</p>
+                    <div style="margin-top: 20px;">
+                    <h3>Detailed Information:</h3>
+                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto;">${node.title}</pre>
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+        
+        function closeNodeModal() {
+            document.getElementById('node-modal').style.display = 'none';
+        }
+        
+        function updatePerformanceSummary() {
+            const summary = document.getElementById('performance-summary');
+            const perfData = graphData.analytics.performance_summary;
+            
+            summary.innerHTML = `
+                <div style="margin-bottom: 10px;">
+                    <span class="performance-indicator excellent"></span>
+                    Excellent: ${perfData.performance_distribution.excellent || 0}
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <span class="performance-indicator good"></span>
+                    Good: ${perfData.performance_distribution.good || 0}
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <span class="performance-indicator average"></span>
+                    Average: ${perfData.performance_distribution.average || 0}
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <span class="performance-indicator slow"></span>
+                    Slow: ${perfData.performance_distribution.slow || 0}
+                </div>
+                <div>
+                    <span class="performance-indicator critical"></span>
+                    Critical: ${perfData.performance_distribution.critical || 0}
+                </div>
+            `;
+        }
+        
+        function renderPerformanceChart() {
+            const ctx = document.getElementById('performance-chart').getContext('2d');
+            const perfData = graphData.analytics.performance_summary.performance_distribution;
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Excellent', 'Good', 'Average', 'Slow', 'Critical'],
+                    datasets: [{
+                        data: [
+                            perfData.excellent || 0,
+                            perfData.good || 0,
+                            perfData.average || 0,
+                            perfData.slow || 0,
+                            perfData.critical || 0
+                        ],
+                        backgroundColor: ['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#F44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Performance Distribution'
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderExecutionTimeChart() {
+            const ctx = document.getElementById('execution-time-chart').getContext('2d');
+            const nodes = graphData.nodes.filter(n => n.execution_time > 0);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: nodes.map(n => n.label.substring(0, 15) + '...'),
+                    datasets: [{
+                        label: 'Execution Time (s)',
+                        data: nodes.map(n => n.execution_time),
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Execution Time by Node'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderCacheEfficiencyChart() {
+            const ctx = document.getElementById('cache-efficiency-chart').getContext('2d');
+            const cacheData = graphData.metadata;
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Cache Hits', 'Cache Misses'],
+                    datasets: [{
+                        data: [
+                            cacheData.cache_hit_ratio * 100,
+                            (1 - cacheData.cache_hit_ratio) * 100
+                        ],
+                        backgroundColor: ['#00BCD4', '#FF5722']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Cache Efficiency'
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderErrorDistributionChart() {
+            const ctx = document.getElementById('error-distribution-chart').getContext('2d');
+            const errorNodes = graphData.nodes.filter(n => n.error_count > 0);
+            
+            if (errorNodes.length === 0) {
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#666';
+                ctx.textAlign = 'center';
+                ctx.fillText('No Errors Detected! 🎉', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: errorNodes.map(n => n.label.substring(0, 15) + '...'),
+                    datasets: [{
+                        label: 'Error Count',
+                        data: errorNodes.map(n => n.error_count),
+                        backgroundColor: 'rgba(244, 67, 54, 0.6)',
+                        borderColor: 'rgba(244, 67, 54, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Error Distribution'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Errors'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderTimelineChart() {
+            const ctx = document.getElementById('timeline-chart').getContext('2d');
+            const nodes = graphData.nodes.filter(n => n.execution_time > 0);
+            
+            // Create timeline data
+            let currentTime = 0;
+            const timelineData = nodes.map(node => {
+                const startTime = currentTime;
+                currentTime += node.execution_time;
+                return {
+                    label: node.label,
+                    start: startTime,
+                    duration: node.execution_time,
+                    end: currentTime
+                };
+            });
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: timelineData.map(d => d.label.substring(0, 20) + '...'),
+                    datasets: [{
+                        label: 'Execution Timeline',
+                        data: timelineData.map(d => d.duration),
+                        backgroundColor: timelineData.map((d, i) => 
+                            `hsla(${i * 360 / timelineData.length}, 60%, 60%, 0.8)`
+                        )
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Execution Timeline'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Duration (seconds)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateRecommendations() {
+            const list = document.getElementById('recommendations-list');
+            const recommendations = graphData.analytics.recommendations;
+            
+            if (recommendations.length === 0) {
+                list.innerHTML = '<li>Great job! No specific recommendations at this time. 🎉</li>';
+                return;
+            }
+            
+            list.innerHTML = recommendations
+                .map(rec => `<li>${rec}</li>`)
+                .join('');
+        }
+        
+        function updateBottlenecks() {
+            const container = document.getElementById('bottlenecks-list');
+            const bottlenecks = graphData.metadata.bottlenecks;
+            
+            if (bottlenecks.length === 0) {
+                container.innerHTML = '<p>No bottlenecks detected! 🎉</p>';
+                return;
+            }
+            
+            container.innerHTML = bottlenecks
+                .map(bottleneck => `
+                    <div style="padding: 10px; margin: 5px 0; background: white; border-radius: 5px; border-left: 4px solid ${
+                        bottleneck.severity === 'critical' ? '#f44336' : 
+                        bottleneck.severity === 'high' ? '#ff9800' : '#ffc107'
+                    };">
+                        <strong>${bottleneck.type.replace('_', ' ').toUpperCase()}</strong><br>
+                        <span style="color: #666;">Severity: ${bottleneck.severity}</span><br>
+                        ${bottleneck.execution_time ? `⏱️ Time: ${bottleneck.execution_time.toFixed(3)}s<br>` : ''}
+                        ${bottleneck.error_count ? `⚠️ Errors: ${bottleneck.error_count}<br>` : ''}
+                        <button class="btn btn-small" onclick="focusNode('${bottleneck.node_id}')">Focus Node</button>
+                    </div>
+                `)
+                .join('');
+        }
+        
+        function focusNode(nodeId) {
+            highlightNodes([nodeId]);
+            network.focus(nodeId, {
+                scale: 1.5,
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuart'
+                }
+            });
+            
+            // Switch to graph view if not already there
+            if (currentView !== 'graph') {
+                switchTabByName('graph');
+            }
+        }
+        
+        function switchTabByName(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.textContent.includes('Graph') && tabName === 'graph') {
+                    tab.classList.add('active');
+                } else if (tab.textContent.includes('Analytics') && tabName === 'analytics') {
+                    tab.classList.add('active');
+                } else if (tab.textContent.includes('Timeline') && tabName === 'timeline') {
+                    tab.classList.add('active');
+                }
+            });
+            
+            document.getElementById('graph-view').style.display = 
+                tabName === 'graph' ? 'block' : 'none';
+            document.getElementById('analytics-view').style.display = 
+                tabName === 'analytics' ? 'block' : 'none';
+            document.getElementById('timeline-view').style.display = 
+                tabName === 'timeline' ? 'block' : 'none';
+            
+            currentView = tabName;
+        }
+        
+        // Utility functions
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        // Auto-refresh functionality for real-time monitoring
+        let autoRefresh = false;
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            if (autoRefresh) {
+                setInterval(() => {
+                    // In a real implementation, this would fetch new data
+                    console.log('Auto-refreshing graph data...');
+                }, 5000);
+            }
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey || event.metaKey) {
+                switch(event.key) {
+                    case 'f':
+                        event.preventDefault();
+                        document.getElementById('search-input').focus();
+                        break;
+                    case 'r':
+                        event.preventDefault();
+                        resetView();
+                        break;
+                    case 'e':
+                        event.preventDefault();
+                        exportImage();
+                        break;
+                    case '1':
+                        event.preventDefault();
+                        switchTabByName('graph');
+                        break;
+                    case '2':
+                        event.preventDefault();
+                        switchTabByName('analytics');
+                        break;
+                    case '3':
+                        event.preventDefault();
+                        switchTabByName('timeline');
+                        break;
+                }
+            }
+            
+            // Escape key to clear selections and close modals
+            if (event.key === 'Escape') {
+                resetHighlight();
+                closeNodeModal();
+            }
+        });
+        
+        // Initialize tooltips for better UX
+        function initializeTooltips() {
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(button => {
+                button.addEventListener('mouseenter', function() {
+                    // Add tooltip functionality here if needed
+                });
+            });
+        }
+        
+        // Performance monitoring
+        function monitorPerformance() {
+            const observer = new PerformanceObserver((list) => {
+                list.getEntries().forEach((entry) => {
+                    if (entry.entryType === 'measure') {
+                        console.log('Performance measure:', entry.name, entry.duration);
+                    }
+                });
+            });
+            observer.observe({entryTypes: ['measure', 'navigation']});
+        }
+        
+        // Network loading state
+        function showLoadingState() {
+            const container = document.getElementById('network');
+            container.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100%; flex-direction: column;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🔄</div>
+                    <div style="font-size: 18px; color: #666;">Loading enhanced graph...</div>
+                    <div class="progress-bar" style="width: 200px; margin-top: 20px;">
+                        <div class="progress-fill" style="width: 0%; animation: loading 2s infinite;"></div>
+                    </div>
+                </div>
+                <style>
+                @keyframes loading {
+                    0% { width: 0%; }
+                    50% { width: 70%; }
+                    100% { width: 100%; }
+                }
+                </style>
+            `;
+        }
+        
+        // Initialize performance monitoring
+        monitorPerformance();
+        
+        // Add resize handler for responsive behavior
+        window.addEventListener('resize', debounce(() => {
+            if (network) {
+                network.fit();
+            }
+        }, 250));
+        
+        // Click outside modal to close
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('node-modal');
+            if (event.target === modal) {
+                closeNodeModal();
+            }
+        });
+        
+        // Initialize all features
+        setTimeout(() => {
+            initializeTooltips();
+            console.log('🚀 Enhanced Query Execution Graph initialized successfully!');
+            console.log('📊 Features available:');
+            console.log('   - Real-time search and filtering');
+            console.log('   - Performance analytics dashboard');
+            console.log('   - Interactive node details');
+            console.log('   - Critical path analysis');
+            console.log('   - Bottleneck detection');
+            console.log('   - Multiple layout options');
+            console.log('   - Keyboard shortcuts (Ctrl+F, Ctrl+R, Ctrl+E, Ctrl+1/2/3)');
+        }, 1000);
+    </script>
+</body>
+</html>
+        

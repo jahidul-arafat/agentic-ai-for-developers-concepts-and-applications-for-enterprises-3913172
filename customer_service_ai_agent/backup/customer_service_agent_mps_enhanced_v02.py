@@ -211,12 +211,12 @@ class Config:
     tokenizers_parallelism: bool = field(default_factory=lambda: os.getenv('TOKENIZERS_PARALLELISM', 'true').lower() == 'true')
 
     # Cache Directories
-    hf_hub_cache: str = field(default_factory=lambda: os.getenv('HF_HUB_CACHE', './hf_cache'))
-    st_cache: str = field(default_factory=lambda: os.getenv('SENTENCE_TRANSFORMERS_HOME', './st_cache'))
+    hf_hub_cache: str = field(default_factory=lambda: os.getenv('HF_HUB_CACHE', '../src/hf_cache'))
+    st_cache: str = field(default_factory=lambda: os.getenv('SENTENCE_TRANSFORMERS_HOME', '../src/st_cache'))
 
     # Logging Configuration
     log_level: str = field(default_factory=lambda: os.getenv('LOG_LEVEL', 'INFO'))
-    log_file: str = field(default_factory=lambda: os.getenv('LOG_FILE', 'customer_service_agent.log'))
+    log_file: str = field(default_factory=lambda: os.getenv('LOG_FILE', '../src/customer_service_agent.log'))
     log_format: str = field(default_factory=lambda: os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'))
 
     # Circuit Breaker Configuration
@@ -229,7 +229,7 @@ class Config:
     agent_memory_enabled: bool = field(default_factory=lambda: os.getenv('AGENT_MEMORY_ENABLED', 'false').lower() == 'true')
 
     # File Paths
-    policy_files_dir: str = field(default_factory=lambda: os.getenv('POLICY_FILES_DIR', 'policy_files'))
+    policy_files_dir: str = field(default_factory=lambda: os.getenv('POLICY_FILES_DIR', '../src/policy_files'))
 
     # FIXED: Use default_factory for mutable list
     support_files_default: List[str] = field(default_factory=lambda: (
@@ -302,7 +302,7 @@ def setup_logging():
     """Setup structured logging with file and console handlers"""
     # Use environment variables directly since config isn't created yet
     log_level = os.getenv('LOG_LEVEL', 'INFO')
-    log_file = os.getenv('LOG_FILE', 'customer_service_agent.log')
+    log_file = os.getenv('LOG_FILE', '../src/customer_service_agent.log')
     log_format = os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s')
 
     logging.basicConfig(
@@ -1618,39 +1618,26 @@ class QueryDecomposer:
         }
 
     def decompose_query(self, query: str) -> List[Dict[str, str]]:
-        """Break down complex query into manageable subgoals (5-10 subgoals)"""
+        """Break down complex query into manageable subgoals"""
         assessment = self.assess_query_complexity(query)
 
         if not assessment['requires_decomposition']:
-            # Force minimum decomposition even for simple queries
-            return self._force_minimum_decomposition(query)
+            return [{'subgoal': query, 'type': 'simple', 'priority': 1}]
 
-        # MODIFIED: Updated prompt for 5-10 subgoals
+        # Use LLM to intelligently decompose the query
         decomposition_prompt = f"""
-        Break down this complex customer service query into 5-10 specific, actionable subgoals that can be executed sequentially.
-        Each subgoal should be focused on a single task and specific enough to be executed by one tool call.
-        
-        REQUIREMENTS:
-        - Minimum 5 subgoals (even for simpler queries)
-        - Maximum 10 subgoals (break complex tasks into smaller steps)
-        - Each subgoal should be actionable and specific
-        - Arrange in logical execution order
+        Break down this complex customer service query into 3-5 simple, specific subgoals that can be executed sequentially.
+        Each subgoal should be actionable and focused on a single task.
         
         Original Query: "{query}"
         
         Format your response as a numbered list of subgoals:
-        1. [First specific data collection step]
-        2. [Second data collection step]
-        3. [Third data collection or validation step]
-        4. [First analysis step]
-        5. [Second analysis step]
-        6. [Additional analysis if needed]
-        7. [Synthesis or comparison step]
-        8. [Recommendation generation]
-        9. [Additional recommendations if complex]
-        10. [Final summary or action plan]
+        1. [Specific action with clear parameters]
+        2. [Next logical step]
+        3. [Analysis or calculation step]
+        4. [Final synthesis or recommendation]
         
-        Adjust the number between 5-10 based on query complexity, but ensure each step is meaningful and necessary.
+        Make each subgoal specific enough to be executed by a single tool call.
         """
 
         try:
@@ -1661,192 +1648,11 @@ class QueryDecomposer:
             # Parse the response into subgoals
             subgoals = self._parse_decomposition_response(str(decomposition_response))
 
-            # ADDED: Enforce 5-10 subgoal range
-            subgoals = self._enforce_subgoal_range(subgoals, query)
-
             return subgoals
 
         except Exception as e:
             print(f"⚠️  Decomposition failed, using pattern-based fallback: {e}")
-            return self._pattern_based_decomposition_extended(query, assessment)
-
-    def _force_minimum_decomposition(self, query: str) -> List[Dict[str, str]]:
-        """Force even simple queries into minimum 5 subgoals"""
-        return [
-            {'subgoal': f'Identify the primary entities mentioned in the query: "{query}"', 'type': 'data_collection', 'priority': 1},
-            {'subgoal': 'Collect detailed information for the identified entities', 'type': 'data_collection', 'priority': 2},
-            {'subgoal': 'Validate and cross-reference the collected data', 'type': 'data_collection', 'priority': 3},
-            {'subgoal': 'Analyze the data to extract key insights and patterns', 'type': 'analysis', 'priority': 4},
-            {'subgoal': 'Generate comprehensive response with actionable recommendations', 'type': 'synthesis', 'priority': 5}
-        ]
-
-    def _enforce_subgoal_range(self, subgoals: List[Dict], original_query: str) -> List[Dict]:
-        """Ensure subgoals are between 5-10"""
-
-        if len(subgoals) < 5:
-            print(f"⚠️  Only {len(subgoals)} subgoals generated, expanding to minimum 5...")
-            return self._expand_subgoals(subgoals, original_query, target_count=5)
-
-        elif len(subgoals) > 10:
-            print(f"⚠️  {len(subgoals)} subgoals generated, condensing to maximum 10...")
-            return self._condense_subgoals(subgoals, target_count=10)
-
-        else:
-            print(f"✅ {len(subgoals)} subgoals generated (within 5-10 range)")
-            return subgoals
-
-    def _expand_subgoals(self, subgoals: List[Dict], query: str, target_count: int) -> List[Dict]:
-        """Expand subgoals to reach minimum count"""
-        expanded = subgoals.copy()
-
-        # Add data validation steps
-        if len(expanded) < target_count:
-            expanded.insert(1, {
-                'subgoal': 'Validate input parameters and check data availability',
-                'type': 'data_collection',
-                'priority': len(expanded) + 1
-            })
-
-        # Add cross-reference step
-        if len(expanded) < target_count:
-            expanded.insert(-1, {
-                'subgoal': 'Cross-reference findings with related data sources',
-                'type': 'analysis',
-                'priority': len(expanded) + 1
-            })
-
-        # Add quality check step
-        if len(expanded) < target_count:
-            expanded.insert(-1, {
-                'subgoal': 'Perform quality check on analysis results',
-                'type': 'analysis',
-                'priority': len(expanded) + 1
-            })
-
-        # Add alternative solutions step
-        if len(expanded) < target_count:
-            expanded.insert(-1, {
-                'subgoal': 'Generate alternative solutions or recommendations',
-                'type': 'synthesis',
-                'priority': len(expanded) + 1
-            })
-
-        # Add final verification step
-        if len(expanded) < target_count:
-            expanded.append({
-                'subgoal': 'Verify all recommendations align with business policies',
-                'type': 'synthesis',
-                'priority': len(expanded) + 1
-            })
-
-        # Update priorities
-        for i, subgoal in enumerate(expanded):
-            subgoal['priority'] = i + 1
-
-        return expanded
-
-    def _condense_subgoals(self, subgoals: List[Dict], target_count: int) -> List[Dict]:
-        """Condense subgoals to maximum count by combining similar ones"""
-        if len(subgoals) <= target_count:
-            return subgoals
-
-        # Group by type
-        data_collection = [s for s in subgoals if s['type'] == 'data_collection']
-        analysis = [s for s in subgoals if s['type'] == 'analysis']
-        synthesis = [s for s in subgoals if s['type'] == 'synthesis']
-
-        condensed = []
-
-        # Keep first 3-4 data collection steps
-        if len(data_collection) > 4:
-            condensed.extend(data_collection[:2])
-            # Combine remaining data collection
-            combined_data = {
-                'subgoal': f"Complete additional data collection: {'; '.join([s['subgoal'][:50] + '...' for s in data_collection[2:]])}",
-                'type': 'data_collection',
-                'priority': 3
-            }
-            condensed.append(combined_data)
-        else:
-            condensed.extend(data_collection)
-
-        # Keep first 3-4 analysis steps
-        remaining_slots = target_count - len(condensed) - min(2, len(synthesis))
-        analysis_to_keep = min(remaining_slots, len(analysis))
-
-        if analysis_to_keep < len(analysis):
-            condensed.extend(analysis[:analysis_to_keep-1])
-            # Combine remaining analysis
-            combined_analysis = {
-                'subgoal': f"Complete comprehensive analysis including: {'; '.join([s['subgoal'][:40] + '...' for s in analysis[analysis_to_keep-1:]])}",
-                'type': 'analysis',
-                'priority': len(condensed) + 1
-            }
-            condensed.append(combined_analysis)
-        else:
-            condensed.extend(analysis)
-
-        # Keep final synthesis steps
-        final_synthesis_count = min(2, len(synthesis), target_count - len(condensed))
-        condensed.extend(synthesis[:final_synthesis_count])
-
-        # Update priorities
-        for i, subgoal in enumerate(condensed):
-            subgoal['priority'] = i + 1
-
-        return condensed[:target_count]
-
-    def _pattern_based_decomposition_extended(self, query: str, assessment: Dict) -> List[Dict[str, str]]:
-        """Extended pattern-based decomposition with 5-10 subgoals"""
-        subgoals = []
-
-        # Multi-customer pattern (7 subgoals)
-        if 'multi_customer' in assessment['detected_patterns']:
-            subgoals.extend([
-                {'subgoal': 'Parse and validate customer identifiers from the query', 'type': 'data_collection', 'priority': 1},
-                {'subgoal': 'Retrieve basic customer information and contact details', 'type': 'data_collection', 'priority': 2},
-                {'subgoal': 'Get comprehensive order history for each customer', 'type': 'data_collection', 'priority': 3},
-                {'subgoal': 'Analyze order patterns and customer behavior individually', 'type': 'analysis', 'priority': 4},
-                {'subgoal': 'Compare customers and identify common patterns or issues', 'type': 'analysis', 'priority': 5},
-                {'subgoal': 'Generate individual recommendations for each customer', 'type': 'synthesis', 'priority': 6},
-                {'subgoal': 'Create summary report with actionable next steps', 'type': 'synthesis', 'priority': 7}
-            ])
-
-        # Predictive analysis pattern (8 subgoals)
-        elif 'predictive_analysis' in assessment['detected_patterns']:
-            subgoals.extend([
-                {'subgoal': 'Collect historical data relevant to prediction requirements', 'type': 'data_collection', 'priority': 1},
-                {'subgoal': 'Gather current state data and recent trends', 'type': 'data_collection', 'priority': 2},
-                {'subgoal': 'Validate data quality and identify any gaps', 'type': 'data_collection', 'priority': 3},
-                {'subgoal': 'Identify patterns and trends in historical data', 'type': 'analysis', 'priority': 4},
-                {'subgoal': 'Assess current risk factors and warning indicators', 'type': 'analysis', 'priority': 5},
-                {'subgoal': 'Generate predictions based on identified patterns', 'type': 'analysis', 'priority': 6},
-                {'subgoal': 'Develop proactive recommendations and action plans', 'type': 'synthesis', 'priority': 7},
-                {'subgoal': 'Create monitoring strategy for ongoing risk management', 'type': 'synthesis', 'priority': 8}
-            ])
-
-        # Business impact pattern (6 subgoals)
-        elif 'business_impact' in assessment['detected_patterns']:
-            subgoals.extend([
-                {'subgoal': 'Identify and quantify the business metrics involved', 'type': 'data_collection', 'priority': 1},
-                {'subgoal': 'Collect financial and operational data for impact analysis', 'type': 'data_collection', 'priority': 2},
-                {'subgoal': 'Calculate direct financial impact and costs', 'type': 'analysis', 'priority': 3},
-                {'subgoal': 'Assess indirect business risks and operational implications', 'type': 'analysis', 'priority': 4},
-                {'subgoal': 'Develop strategies to minimize negative impact', 'type': 'synthesis', 'priority': 5},
-                {'subgoal': 'Create implementation plan with timeline and resources', 'type': 'synthesis', 'priority': 6}
-            ])
-
-        # Default extended decomposition (5 subgoals minimum)
-        else:
-            subgoals = [
-                {'subgoal': 'Identify and extract key entities and requirements from query', 'type': 'data_collection', 'priority': 1},
-                {'subgoal': 'Collect comprehensive data for all identified entities', 'type': 'data_collection', 'priority': 2},
-                {'subgoal': 'Validate data completeness and cross-reference information', 'type': 'data_collection', 'priority': 3},
-                {'subgoal': 'Analyze collected data and identify key insights', 'type': 'analysis', 'priority': 4},
-                {'subgoal': 'Generate comprehensive response with actionable recommendations', 'type': 'synthesis', 'priority': 5}
-            ]
-
-        return subgoals
+            return self._pattern_based_decomposition(query, assessment)
 
     def _parse_decomposition_response(self, response: str) -> List[Dict[str, str]]:
         """Parse LLM response into structured subgoals"""
@@ -1858,7 +1664,7 @@ class QueryDecomposer:
             if line and (line[0].isdigit() or line.startswith('-') or line.startswith('•')):
                 # Clean up the line
                 clean_line = line
-                for prefix in ['1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.', '-', '•']:
+                for prefix in ['1.', '2.', '3.', '4.', '5.', '-', '•']:
                     if clean_line.startswith(prefix):
                         clean_line = clean_line[len(prefix):].strip()
                         break
@@ -1873,6 +1679,48 @@ class QueryDecomposer:
 
         return subgoals if subgoals else [{'subgoal': response, 'type': 'simple', 'priority': 1}]
 
+    def _pattern_based_decomposition(self, query: str, assessment: Dict) -> List[Dict[str, str]]:
+        """Fallback pattern-based decomposition when LLM fails"""
+        subgoals = []
+
+        # Multi-customer pattern
+        if 'multi_customer' in assessment['detected_patterns']:
+            subgoals.extend([
+                {'subgoal': 'Identify and list all customers mentioned in the query', 'type': 'data_collection',
+                 'priority': 1},
+                {'subgoal': 'Get detailed order information for each customer', 'type': 'data_collection',
+                 'priority': 2},
+                {'subgoal': 'Analyze patterns and issues across the customer group', 'type': 'analysis', 'priority': 3}
+            ])
+
+        # Predictive analysis pattern
+        if 'predictive_analysis' in assessment['detected_patterns']:
+            subgoals.extend([
+                {'subgoal': 'Analyze recent order and customer behavior patterns', 'type': 'data_collection',
+                 'priority': 1},
+                {'subgoal': 'Identify risk factors and potential issues', 'type': 'analysis', 'priority': 2},
+                {'subgoal': 'Generate proactive recommendations and action plans', 'type': 'synthesis', 'priority': 3}
+            ])
+
+        # Business impact pattern
+        if 'business_impact' in assessment['detected_patterns']:
+            subgoals.extend([
+                {'subgoal': 'Calculate financial metrics and business impact', 'type': 'analysis', 'priority': 1},
+                {'subgoal': 'Assess risk levels and operational implications', 'type': 'analysis', 'priority': 2},
+                {'subgoal': 'Recommend strategies to minimize impact', 'type': 'synthesis', 'priority': 3}
+            ])
+
+        # Default decomposition if no specific patterns
+        if not subgoals:
+            subgoals = [
+                {'subgoal': 'Collect relevant data based on the query requirements', 'type': 'data_collection',
+                 'priority': 1},
+                {'subgoal': 'Analyze the collected data and identify key insights', 'type': 'analysis', 'priority': 2},
+                {'subgoal': 'Provide comprehensive response with recommendations', 'type': 'synthesis', 'priority': 3}
+            ]
+
+        return subgoals
+
     def execute_decomposed_query(self, query: str) -> str:
         """Execute query with automatic decomposition if needed"""
         print(f"🔍 Analyzing query complexity...")
@@ -1880,12 +1728,12 @@ class QueryDecomposer:
         assessment = self.assess_query_complexity(query)
 
         if not assessment['requires_decomposition']:
-            print("✅ Simple query detected, but enforcing minimum decomposition...")
-            # Still decompose simple queries with new requirements
+            print("✅ Simple query detected, executing directly...")
+            return self._execute_simple_query(query)
 
-        print(f"🧩 Query complexity score: {assessment['complexity_score']}")
+        print(f"🧩 Complex query detected (score: {assessment['complexity_score']})")
         print(f"📋 Patterns found: {', '.join(assessment['detected_patterns'])}")
-        print("🔄 Breaking down into 5-10 subgoals...")
+        print("🔄 Breaking down into subgoals...")
 
         subgoals = self.decompose_query(query)
 
@@ -2245,7 +2093,7 @@ class CustomerServiceAgent:
         import os
 
         print("\n🔍 Checking policy_files directory...")
-        policy_dir = "policy_files"
+        policy_dir = "../src/policy_files"
 
         if not os.path.exists(policy_dir):
             print(f"❌ Directory '{policy_dir}' not found!")
@@ -2312,7 +2160,7 @@ class CustomerServiceAgent:
         """Allow user to select specific files"""
         import os
 
-        policy_dir = "policy_files"
+        policy_dir = "../src/policy_files"
 
         if not os.path.exists(policy_dir):
             print(f"❌ Directory '{policy_dir}' not found!")
